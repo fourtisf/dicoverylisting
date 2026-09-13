@@ -1,4 +1,5 @@
 import { CHAINS } from "@/config/chains";
+import { scanPonsToken } from "@/lib/providers/pons";
 import type { ScanFlag, ScanResult } from "@/lib/types";
 
 // Fourtis-style safety snapshot. Token identity comes from DexScreener (works on
@@ -195,11 +196,21 @@ export async function scanToken(address: string): Promise<ScanResult> {
   const family = detectFamily(address);
   const [info, security] = await Promise.all([
     dexInfo(address),
-    (async (): Promise<{ fps: FP[]; chain: string | null; source: string } | null> => {
+    (async (): Promise<
+      { fps: FP[]; chain: string | null; source: string; name?: string | null; symbol?: string | null } | null
+    > => {
       try {
         if (family === "evm") {
-          const r = await scanEvm(address);
-          return { fps: r.fps, chain: r.chainId, source: "GoPlus" };
+          try {
+            const r = await scanEvm(address);
+            return { fps: r.fps, chain: r.chainId, source: "GoPlus" };
+          } catch {
+            // No aggregator covers Robinhood Chain, but its launchpad does:
+            // if Pons launched this token, its contracts answer definitively.
+            const pons = await scanPonsToken(address);
+            if (!pons) return null;
+            return { fps: pons.fps, chain: pons.chain, source: pons.source, name: pons.name, symbol: pons.symbol };
+          }
         }
         if (family === "solana") {
           const [gp, rug] = await Promise.allSettled([scanSolanaGoPlus(address), rugCheck(address)]);
@@ -224,26 +235,28 @@ export async function scanToken(address: string): Promise<ScanResult> {
   ]);
 
   const chain = security?.chain ?? info.chain ?? (family === "ton" ? "ton" : family === "tron" ? "tron" : null);
+  const name = info.name ?? security?.name ?? null;
+  const symbol = info.symbol ?? security?.symbol ?? null;
 
   if (!security) {
     // Basic snapshot only (no security provider covered this chain/token).
     const flags: ScanFlag[] = [
-      { label: "Name", value: info.name ?? "Unknown", status: info.name ? "ok" : "na" },
+      { label: "Name", value: name ?? "Unknown", status: name ? "ok" : "na" },
       { label: "Chain", value: chain ? CHAINS[chain]?.label ?? chain : "Unknown", status: chain ? "ok" : "na" },
       { label: "Security data", value: "Limited", status: "warn" },
     ];
     return {
       address,
       chain,
-      name: info.name,
-      symbol: info.symbol,
+      name,
+      symbol,
       score: null,
       scoreLabel: "LIMITED",
       flags,
       verdict: "warn",
       verdictText: "ℹ️ Limited security data for this token — basic info only. DYOR.",
-      live: Boolean(info.name),
-      dataSource: info.name ? "DexScreener (basic)" : "unavailable",
+      live: Boolean(name),
+      dataSource: name ? "DexScreener (basic)" : "unavailable",
     };
   }
 
@@ -252,8 +265,8 @@ export async function scanToken(address: string): Promise<ScanResult> {
   return {
     address,
     chain,
-    name: info.name,
-    symbol: info.symbol,
+    name,
+    symbol,
     score,
     scoreLabel: v.label,
     flags,

@@ -7,9 +7,11 @@ next-env.d.ts
 .env
 .env.local
 .env.*.local
+.env.bak.*
 .DS_Store
 npm-debug.log*
 e2e-shots/
+chart-shots/
 
 # Admin listing store (runtime data, do not commit)
 data/
@@ -17,3 +19,14 @@ data/
 
 # Admin-uploaded logos (runtime)
 public/uploads/
+
+# Operational backups the server makes for itself. These are never code, they
+# live only on the box, and leaving them untracked made `git status` unreadable
+# — which is how a real modified file (package-lock.json) sat unnoticed among
+# eight lines of noise.
+*.bak
+data.bak-*/
+/FETCH_HEAD
+
+# fonts:check writes a sample render here — a diagnostic, not an asset
+bot/fonts-check.png

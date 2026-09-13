@@ -5,6 +5,25 @@ import { CHAINS } from "@/config/chains";
 import { fmtCap } from "@/lib/format";
 import { BRAND_NAME } from "@/config/brand";
 import { useApp } from "./AppState";
+import { ChainLogo } from "./ChainLogo";
+
+// Clean line icons (Lucide-style) instead of emoji section-glyphs — crisp and
+// identical across every device, not the OS emoji-of-the-day.
+function Ic({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {d.split("|").map((p, i) => (
+        <path key={i} d={p} />
+      ))}
+    </svg>
+  );
+}
+const IC = {
+  pulse: "M22 12h-4l-3 9L9 3l-3 9H2", // activity line
+  gauge: "m12 14 4-4|M3.34 19a10 10 0 1 1 17.32 0", // half-gauge
+  signal: "M4.9 19.1C1 15.2 1 8.8 4.9 4.9|M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5|M12 12h.01|M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5|M19.1 4.9C23 8.8 23 15.1 19.1 19",
+  flame: "M15 14c.2-1 .7-1.7 1.5-2.5C18 10 18.5 8.5 18 7c-.5-1.4-1.6-2.6-3-3 .5 2-1 3.5-2.5 4.5C9 10 8 12 8 14a5 5 0 0 0 10 0",
+};
 
 function FearGreedGauge({ value }: { value: number }) {
   const cx = 100,
@@ -66,11 +85,11 @@ export function PulseStrip() {
     <div className="pulse-strip">
       <div className="wcard" title="Which chains are hottest right now — a heat score from 24h volume + momentum, per chain.">
         <div className="wcard-head">
-          <div className="ic">📡</div>
+          <div className="ic"><Ic d={IC.pulse} /></div>
           <h3>{BRAND_NAME} Pulse</h3>
           <span className="live-pill">● LIVE</span>
           <a className="more">
-            {hottest ? `${CHAINS[hottest.chain]?.label ?? hottest.chain} ${hottest.temp}° 🔥` : "…"}
+            {hottest ? `${CHAINS[hottest.chain]?.label ?? hottest.chain} ${hottest.temp}°` : "…"}
           </a>
         </div>
         <div className="heat">
@@ -79,12 +98,12 @@ export function PulseStrip() {
             if (!c) return null;
             return (
               <div className="heat-cell" key={h.chain}>
-                <div className="heat-top">
-                  <span className="heat-chain">
-                    <span className="cdot" style={{ background: c.color, color: c.color }} />
-                    {c.label}
-                  </span>
-                  <span className="heat-temp">{h.temp}°</span>
+                <div className="heat-chain">
+                  <ChainLogo chain={h.chain} size={16} />
+                  <span className="heat-name">{c.label}</span>
+                </div>
+                <div className="heat-temp">
+                  {h.temp}<span className="deg">°</span>
                 </div>
                 <div className="heat-kv">
                   <span>VOL</span>
@@ -101,7 +120,7 @@ export function PulseStrip() {
 
       <div className="wcard">
         <div className="wcard-head">
-          <div className="ic">🧭</div>
+          <div className="ic"><Ic d={IC.gauge} /></div>
           <h3>Fear &amp; Greed</h3>
           <a className="more">{fng?.source === "live" ? "LIVE" : "History"}</a>
         </div>
@@ -119,7 +138,7 @@ export function PulseStrip() {
 
       <div className="wcard">
         <div className="wcard-head">
-          <div className="ic">⚡</div>
+          <div className="ic"><Ic d={IC.signal} /></div>
           <h3>Signals</h3>
           <Link className="more" href="/signals">View all</Link>
         </div>

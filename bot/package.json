@@ -1,0 +1,60 @@
+{
+  "name": "dexvra-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dexvra Telegram bot — Listing / Xpress / Trending / Banner packages with on-chain payment and auto-posting to channels + X.",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js",
+    "check": "node scripts/smoke.js",
+    "x:check": "node scripts/x-check.js",
+    "poolstrade:check": "node scripts/poolstrade-check.js",
+    "launchpads:check": "node scripts/launchpads-check.js",
+    "fonts:check": "node scripts/fonts-check.js",
+    "buybot:check": "node scripts/buybot-check.js",
+    "group:ca": "node scripts/group-ca.js",
+    "raid:check": "node scripts/raid-check.js",
+    "raid:timeline": "node scripts/raid-timeline.js",
+    "mongo:check": "node scripts/mongo-check.js",
+    "backup:check": "node scripts/backup-check.js",
+    "rpc:check": "node scripts/rpc-check.js",
+    "treasury": "node scripts/treasury.js",
+    "test": "node scripts/run-tests.js",
+    "trending:check": "node scripts/trending-check.js",
+    "seed:chain": "node scripts/seed-chain.js",
+    "trending:chains": "node scripts/trending-chains.js",
+    "unseed:chain": "node scripts/unseed-chain.js",
+    "comment_nostables": "Remove the stablecoins and wrappers already on the site. createFromInfo now refuses them at the one door every listing goes through, but no gate reaches backwards over rows listed before it existed. Dry run by default; --apply deletes. It prints the TIER, because FREE is the tier the bot books itself and anything else was paid for.",
+    "listings:nostables": "node scripts/listings-stables.js",
+    "listings:fix": "node scripts/fix-listings.js",
+    "listing:check": "node scripts/listing-check.js",
+    "post:check": "node scripts/post-check.js",
+    "x:retarget": "node scripts/retarget-x-handle.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@napi-rs/canvas": "^1.0.2",
+    "@solana/web3.js": "^1.95.3",
+    "@ton/core": "^0.62.0",
+    "@ton/crypto": "^3.3.0",
+    "@ton/ton": "^15.2.1",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.2",
+    "fluent-ffmpeg": "^2.1.3",
+    "mongodb": "^6.21.0",
+    "telegraf": "^4.16.3",
+    "telegraf-ratelimit": "^2.0.0",
+    "telegram": "^2.26.22",
+    "tronweb": "^6.0.0",
+    "twitter-api-v2": "^1.18.2"
+  },
+  "overrides": {
+    "rpc-websockets": {
+      "uuid": "9.0.1"
+    }
+  },
+  "comment_overrides": "Pin rpc-websockets' uuid to a CommonJS build. @solana/web3.js → rpc-websockets pulls uuid@14 (ESM-only), which crashes require() on Node < 22.12 with ERR_REQUIRE_ESM. uuid@9.0.1 exposes a CJS require entry; the v4 API used by rpc-websockets is unchanged."
+}

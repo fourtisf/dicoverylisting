@@ -27,14 +27,18 @@ const ScanLogo = () => (
 
 export function Socials({ t }: { t: BoardToken }) {
   const c = CHAINS[t.chain];
-  const tg = t.links.telegram ?? t.links.website;
+  // Only the project's REAL socials — each icon shows ONLY when its real link
+  // exists. Never point X at a search or Telegram at the website; a wrong link
+  // is worse than a missing one.
   return (
     <div className="soc-row">
-      <a className="soc soc-x" href={t.links.twitter ?? "#"} target="_blank" rel="noopener noreferrer" title="X (Twitter)">
-        <XLogo />
-      </a>
-      {tg && (
-        <a className="soc soc-tg" href={tg} target="_blank" rel="noopener noreferrer" title="Telegram">
+      {t.links.twitter && (
+        <a className="soc soc-x" href={t.links.twitter} target="_blank" rel="noopener noreferrer" title="X (Twitter)">
+          <XLogo />
+        </a>
+      )}
+      {t.links.telegram && (
+        <a className="soc soc-tg" href={t.links.telegram} target="_blank" rel="noopener noreferrer" title="Telegram">
           <TgLogo />
         </a>
       )}
@@ -43,7 +47,7 @@ export function Socials({ t }: { t: BoardToken }) {
           <WebLogo />
         </a>
       )}
-      {c && (
+      {c && !c.explorer(t.address).includes("dexscreener") && (
         <a className="soc" href={c.explorer(t.address)} target="_blank" rel="noopener noreferrer" title="Explorer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M9 15 15 9M10.5 6.5 13 4a4 4 0 0 1 6 6l-2.5 2.5M13.5 17.5 11 20a4 4 0 0 1-6-6l2.5-2.5" />

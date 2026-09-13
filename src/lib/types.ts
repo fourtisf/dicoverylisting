@@ -8,7 +8,12 @@ export interface TxSplit {
 
 // Listing packages (the tag every listed token carries). Ranked #1 Diamond →
 // #5 Bronze, plus Xpress (instant, unranked). Pricing lives in lib/packages.ts.
-export type ListingTier = "DIAMOND" | "GOLD" | "PLATINUM" | "SILVER" | "BRONZE" | "XPRESS";
+// "FREE" is NOT a package anyone can buy — it marks a token the bot auto-listed
+// when it climbed past the operator's market-cap threshold. It is deliberately
+// absent from LISTING_TIERS (the pricing UI iterates that), so it can never show
+// up for sale, while still carrying its own badge instead of impersonating a
+// paid Bronze listing.
+export type ListingTier = "DIAMOND" | "GOLD" | "PLATINUM" | "SILVER" | "BRONZE" | "XPRESS" | "FREE";
 
 export interface BoardToken {
   key: string; // `${chain}:${address}` — stable identity across refreshes
@@ -38,6 +43,7 @@ export interface BoardToken {
   score: number; // Dexvra Score 0–100 (signal-based, not votes)
   poolAddress: string | null; // top pool — used to embed the GeckoTerminal chart
   links: { website: string | null; twitter: string | null; telegram: string | null };
+  overview: string | null; // short project description (shown on the token page)
 }
 
 export interface Trade {
@@ -78,6 +84,11 @@ export interface WireItem {
 }
 
 export interface TokensPayload {
+  /** The commit this server is running. Every check in this repo prints one,
+   *  for the reason `fonts:check` learned the hard way: each round of a bug
+   *  begins with somebody reading a diagnostic as a statement about the fix
+   *  they just deployed. `logos:check` compares it against the checkout. */
+  build: string;
   tokens: BoardToken[];
   heat: ChainHeat[];
   wire: WireItem[];

@@ -1,39 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CHAINS } from "@/config/chains";
-import { cached } from "@/lib/cache";
+import { networkOf, readWhy, safeAddress, topPoolAddress } from "@/lib/providers/gtPool";
+import { cachedPool } from "@/lib/providers/poolCache";
 
 export const dynamic = "force-dynamic";
 
-const POOL_TTL = 10 * 60_000;
 
-// Resolve a token's top pool so the client can embed the GeckoTerminal chart.
-// GeckoTerminal chart embeds are keyed by pool address, not token address.
-async function topPool(network: string, address: string): Promise<string | null> {
-  const res = await fetch(
-    `https://api.geckoterminal.com/api/v2/networks/${network}/tokens/${address}/pools?page=1`,
-    { headers: { accept: "application/json;version=20230302" }, signal: AbortSignal.timeout(8000), cache: "no-store" },
-  );
-  if (!res.ok) throw new Error(`GeckoTerminal ${res.status}`);
-  const json = (await res.json()) as {
-    data?: { attributes?: { address?: string }; id?: string }[];
-  };
-  const top = json.data?.[0];
-  if (!top) return null;
-  // pool id looks like "<network>_<address>"; fall back to that if attributes.address is absent
-  return top.attributes?.address ?? top.id?.split("_").slice(1).join("_") ?? null;
-}
-
+// Resolve a token's top pool. GeckoTerminal keys candles and trades by POOL
+// address, not token address, so the client needs this to ask for either.
+//
+// The lookup itself lives in providers/gtPool — /api/ohlcv needs the same
+// answer, and two copies of "where does this token trade" would diverge into
+// two plausible-looking pool addresses with nothing to say which is right.
 export async function GET(req: NextRequest) {
   const chain = (req.nextUrl.searchParams.get("chain") ?? "").trim();
   const address = (req.nextUrl.searchParams.get("address") ?? "").trim();
-  const network = CHAINS[chain]?.geckoNetwork;
-  if (!network || !address || address.length > 90 || /[^A-Za-z0-9:_-]/.test(address)) {
+  const network = networkOf(chain);
+  if (!network || !safeAddress(address)) {
     return NextResponse.json({ network: null, poolAddress: null }, { status: 200 });
   }
   try {
-    const poolAddress = await cached(`pool:${network}:${address}`, POOL_TTL, () => topPool(network, address));
-    return NextResponse.json({ network, poolAddress });
-  } catch {
-    return NextResponse.json({ network, poolAddress: null });
+    const poolAddress = await cachedPool(network, address, () => topPoolAddress(network, address));
+    // A null here is an ANSWER: GeckoTerminal indexes no pool for this token.
+    return NextResponse.json({ network, poolAddress, why: poolAddress ? null : "No pool indexed for this token yet." });
+  } catch (err) {
+    // ⚠️ AND A NULL HERE IS A SILENCE. `topPoolAddress` is careful to throw for
+    // everything that is not a 404 — a rate-limit cooldown included — and this
+    // catch used to flatten that into the same `poolAddress: null` the answer
+    // uses. One field, two opposite meanings, and the caller could not tell.
+    return NextResponse.json({ network, poolAddress: null, why: `Couldn't look up the pool just now (${readWhy(err)}).` });
   }
 }

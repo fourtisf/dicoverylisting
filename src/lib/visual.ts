@@ -1,19 +1,32 @@
-// Deterministic fallback visuals for tokens without a logo image, so live
-// tokens keep the prototype's emoji-coin look until real logos load.
+// Deterministic fallback visuals for tokens without a logo image. The old look
+// stamped a RANDOM emoji (🥛/⛽/🏹…) on the gradient — it read as cheap and
+// unrelated to the token. We now render a clean ticker MONOGRAM (Uniswap /
+// GitHub-avatar style) on a refined jewel-tone gradient instead; `emoji` is
+// kept only for back-compat callers.
 const EMOJIS = ["🐸","🚀","🌕","💎","⚡","🐶","🦉","🍰","🐻","🛰️","🌿","👾","🥛","⛽","🏹","🍙","🍛","🗿","🐈‍⬛","⚔️"];
 
+// Cohesive jewel tones that sit with the mint→cyan brand — no garish
+// yellow/pink primaries. Light → mid → deep so a white monogram always reads.
 const GRADIENTS: [string, string, string][] = [
-  ["#C9D4FF", "#6D8BFF", "#2A3FB8"],
-  ["#FFE9A8", "#FFC53D", "#B57900"],
-  ["#B8FFD0", "#3DF59F", "#0B9E5E"],
-  ["#E2CCFF", "#A97CFF", "#6524C9"],
-  ["#B0F2FF", "#22D3EE", "#0A7F96"],
-  ["#FFD9B8", "#FF9D5C", "#C25C00"],
-  ["#FFD0E4", "#FF7CB8", "#C22A72"],
-  ["#C4FFD9", "#4DE8A0", "#0E7A4C"],
-  ["#FFF9C4", "#FFE24D", "#A38B00"],
-  ["#E0C4FF", "#B06CFF", "#5C1FB0"],
+  ["#8FD3FF", "#4C82F7", "#1E3A8A"], // sapphire
+  ["#7BE8C2", "#22C39A", "#0B6E52"], // emerald (brand)
+  ["#C4A6FF", "#8B5CF6", "#5B21B6"], // amethyst
+  ["#7FE3F0", "#22D3EE", "#0E7490"], // cyan (brand)
+  ["#A7F3D0", "#34D399", "#065F46"], // jade
+  ["#BAE6FD", "#38BDF8", "#075985"], // sky
+  ["#FBC79E", "#F59E4B", "#B45309"], // amber (rare)
+  ["#F5A8C7", "#EC6AA0", "#9D2A63"], // rose (rare)
+  ["#9DB4FF", "#6172F3", "#312E81"], // indigo
+  ["#8AE7D0", "#2DD4BF", "#0F766E"], // teal
 ];
+
+/** Ticker monogram: the first 1-2 alphanumerics of the symbol, uppercased.
+ *  "$RISE" → "RI", "$W" → "W", "" → "•". Used for the logo-less placeholder. */
+export function monogram(sym?: string): string {
+  const s = String(sym || "").replace(/^\$+/, "").replace(/[^A-Za-z0-9]/g, "");
+  if (!s) return "•";
+  return s.slice(0, 2).toUpperCase();
+}
 
 export function hashStr(s: string): number {
   let h = 0;

@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import { BRAND_NAME, BRAND_SUB } from "@/config/brand";
 import { Logo } from "./Logo";
 import { useApp } from "./AppState";
+import { BOT_URL, TELEGRAM_HANDLE, TELEGRAM_URL, X_URL } from "@/config/brand";
 
-interface NavItem {
+export interface NavItem {
   href: string;
   label: string;
   icon: JSX.Element;
@@ -36,8 +37,18 @@ const GROW: NavItem[] = [
 ];
 
 const APP: NavItem[] = [
+  { href: "/community", label: "Community", icon: <svg viewBox="0 0 24 24" {...stroke}><path d="M4 9h9l4 3.5V9h3V4H4v5z" /><path d="M8 13v4h8l4 3v-3h0" /></svg> },
   { href: "/install", label: "Install App", icon: <svg viewBox="0 0 24 24" {...stroke}><path d="M12 3v11M8 10l4 4 4-4" /><path d="M5 19h14" /></svg> },
   { href: "/account", label: "Account", icon: <svg viewBox="0 0 24 24" {...stroke}><circle cx="12" cy="8.5" r="3.8" /><path d="M4.5 20c1.4-3.4 4.1-5 7.5-5s6.1 1.6 7.5 5" /></svg> },
+];
+
+// Shared so the mobile ⋮ menu (Topbar) exposes the exact same features as the
+// desktop sidebar — which is hidden on phones.
+export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  { label: "Discover", items: DISCOVER },
+  { label: "Signals", items: SIGNALS },
+  { label: "Grow", items: GROW },
+  { label: "App", items: APP },
 ];
 
 function NavGroup({ label, items, pathname }: { label: string; items: NavItem[]; pathname: string }) {
@@ -62,6 +73,7 @@ function NavGroup({ label, items, pathname }: { label: string; items: NavItem[];
 export function Sidebar() {
   const pathname = usePathname();
   const { openListing } = useApp();
+  void openListing; // kept for the in-app submit flow elsewhere
   return (
     <aside className="sidebar">
       <Link href="/" className="brand" aria-label={`${BRAND_NAME} home`}>
@@ -72,17 +84,34 @@ export function Sidebar() {
         </div>
       </Link>
 
-      <button className="fasttrack" onClick={openListing}>
+      <a className="fasttrack" href={BOT_URL} target="_blank" rel="noopener noreferrer">
         <svg viewBox="0 0 24 24" fill="currentColor">
           <path d="M13 2 4.5 13.5H11L9.6 22 19 10h-6.6L13 2z" />
         </svg>
         <span className="lbl">List My Token</span>
-      </button>
+      </a>
 
       <NavGroup label="Discover" items={DISCOVER} pathname={pathname} />
       <NavGroup label="Signals" items={SIGNALS} pathname={pathname} />
       <NavGroup label="Grow" items={GROW} pathname={pathname} />
       <NavGroup label="App" items={APP} pathname={pathname} />
+
+      {/* Quick reach for the two primary accounts. The full list — listing,
+          trending, bot — lives on /community, linked in the App group above. */}
+      <div className="side-soc">
+        <a href={TELEGRAM_URL} target="_blank" rel="noopener noreferrer" title={`Telegram ${TELEGRAM_HANDLE}`}>
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M21.9 4.3 18.9 19c-.2 1-.8 1.2-1.7.8l-4.6-3.4-2.2 2.2c-.3.3-.5.4-.9.4l.3-4.7 8.5-7.7c.4-.3-.1-.5-.6-.2L7.2 12.9 2.6 11.5c-1-.3-1-1 .2-1.5l18-6.9c.8-.3 1.5.2 1.1 1.2z" />
+          </svg>
+          <span>Telegram</span>
+        </a>
+        <a href={X_URL} target="_blank" rel="noopener noreferrer" title="X">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.2 2h3.3l-7.2 8.3L23 22h-6.7l-5.2-6.8L5.1 22H1.8l7.7-8.8L1 2h6.8l4.7 6.2L18.2 2zm-1.2 18h1.8L7.1 3.9H5.2L17 20z" />
+          </svg>
+          <span>X</span>
+        </a>
+      </div>
     </aside>
   );
 }

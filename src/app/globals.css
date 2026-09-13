@@ -1,4 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@600;700;800&display=swap');
+/* ⚠️ THE WEBFONTS ARE NOT @import'ED HERE, AND THAT WAS THE PAGE'S LONGEST
+   SERIAL WAIT. A CSS @import is the slowest way there is to load a font: the
+   browser has to download and parse THIS file before it can even discover the
+   rule, then open a fresh connection to a third-party origin (DNS + TCP + TLS)
+   for the CSS, then a third to fonts.gstatic.com for the .woff2 files — three
+   round trips in series, all of them render-blocking. And a pending stylesheet
+   blocks SCRIPT EXECUTION, so React could not hydrate and the board's own
+   request could not even be made until Google Fonts had answered.
+   Measured in a browser against a box that cannot reach fonts.googleapis.com:
+   /api/tokens was not requested until t=13056ms. That box is the pathological
+   case; a reader on a slow phone pays a smaller version of the same bill on
+   every single load.
+   The link lives in src/app/layout.tsx now, non-blocking, with the two
+   origins preconnected. `font-display: swap` was already in the URL, so text
+   has always been readable in the fallback face while it arrives. */
 
 :root{
   --bg:#090C12; --panel:#0D1119; --card:#101624;
@@ -6,25 +20,35 @@
   --text:#F1F5FB; --muted:#9AA6BC; --faint:#66738C;
   --mint:#3DF59F; --mint-deep:#12D97C; --cyan:#22D3EE;
   --violet:#A97CFF; --violet-deep:#7C3AED;
-  --orange:#FF9D4D; --red:#FF5C7A; --gold:#FFD166;
+  --orange:#FF9D4D; --red:#FF5C7A; --amber:#FFD166;
   --grad:linear-gradient(120deg,#3DF59F 0%,#22D3EE 100%);
-  --fd:'Space Grotesk',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
-  --fb:-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  /* Sora is the brand face the bot's channel artwork already draws with —
+     one typeface across the site and every banner is one identity. */
+  --fd:'Sora','Space Grotesk',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  --fb:'Inter',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
   --fm:'JetBrains Mono',ui-monospace,'SF Mono','Cascadia Code',Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{
+  /* The grain is the first layer, so it textures only the page GROUND — every
+     card paints its own surface over it. Baked into an inline SVG: no asset to
+     fetch, no request to fail. */
   background:
-    radial-gradient(1100px 540px at 78% -16%, rgba(61,245,159,.09), transparent 58%),
-    radial-gradient(900px 520px at -8% 12%, rgba(124,58,237,.08), transparent 55%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.024'/%3E%3C/svg%3E"),
+    radial-gradient(1100px 540px at 78% -16%, rgba(61,220,151,.09), transparent 58%),
+    radial-gradient(900px 520px at -8% 12%, rgba(14,155,216,.08), transparent 55%),
     var(--bg);
   color:var(--text);font-family:var(--fb);font-size:14.5px;-webkit-font-smoothing:antialiased;
+  /* Every digit the same width, everywhere: a board that re-prices every 30s
+     must replace numbers IN PLACE — proportional figures make a whole column
+     shiver on each refresh. */
+  font-variant-numeric:tabular-nums;
 }
 a{color:inherit;text-decoration:none}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 :focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:8px}
-::selection{background:rgba(61,245,159,.3)}
+::selection{background:rgba(61,220,151,.3)}
 .app{display:grid;grid-template-columns:252px 1fr;min-height:100vh}
 
 /* ============ SIDEBAR ============ */
@@ -42,7 +66,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .brand-mark{
   width:40px;height:40px;border-radius:13px;flex:none;background:var(--grad);
   display:grid;place-items:center;color:#03150B;font-family:var(--fd);font-weight:700;font-size:22px;
-  box-shadow:0 8px 24px rgba(61,245,159,.35), inset 0 2px 3px rgba(255,255,255,.55), inset 0 -3px 6px rgba(0,60,35,.25);
+  box-shadow:0 8px 24px rgba(61,220,151,.35), inset 0 2px 3px rgba(255,255,255,.55), inset 0 -3px 6px rgba(0,60,35,.25);
 }
 .brand-name{font-family:var(--fd);font-weight:700;font-size:20px;letter-spacing:-.01em;line-height:1.05}
 .brand-sub{font-family:var(--fm);font-size:8.5px;font-weight:700;letter-spacing:.26em;color:var(--mint);text-transform:uppercase;margin-top:3px;opacity:.9}
@@ -50,10 +74,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   display:flex;align-items:center;justify-content:center;gap:9px;width:100%;
   padding:14px;border-radius:16px;background:var(--grad);
   color:#03150B;font-weight:800;font-size:14px;
-  box-shadow:0 10px 28px rgba(61,245,159,.32), inset 0 2px 0 rgba(255,255,255,.55), inset 0 -3px 6px rgba(0,60,35,.2);
+  box-shadow:0 10px 28px rgba(61,220,151,.32), inset 0 2px 0 rgba(255,255,255,.55), inset 0 -3px 6px rgba(0,60,35,.2);
   transition:transform .16s cubic-bezier(.2,.8,.3,1.2), box-shadow .16s;
 }
-.fasttrack:hover{transform:translateY(-2px);box-shadow:0 16px 38px rgba(61,245,159,.45), inset 0 2px 0 rgba(255,255,255,.55)}
+.fasttrack:hover{transform:translateY(-2px);box-shadow:0 16px 38px rgba(61,220,151,.45), inset 0 2px 0 rgba(255,255,255,.55)}
 .fasttrack svg{width:16px;height:16px;flex:none}
 .nav-label{font-family:var(--fm);font-size:9px;font-weight:700;letter-spacing:.24em;color:var(--faint);text-transform:uppercase;padding:0 10px;margin-bottom:6px}
 .nav{display:flex;flex-direction:column;gap:2px}
@@ -65,8 +89,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 }
 .nav a svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .nav a:hover{background:rgba(255,255,255,.05);color:var(--text)}
-.nav a.active{background:linear-gradient(120deg,rgba(61,245,159,.14),rgba(34,211,238,.07));color:#EAFFF5}
-.nav a.active::before{content:"";position:absolute;left:0;top:22%;bottom:22%;width:3px;border-radius:99px;background:var(--grad);box-shadow:0 0 12px rgba(61,245,159,.6)}
+.nav a.active{background:linear-gradient(120deg,rgba(61,220,151,.14),rgba(34,211,238,.07));color:#EAFFF5}
+.nav a.active::before{content:"";position:absolute;left:0;top:22%;bottom:22%;width:3px;border-radius:99px;background:var(--grad);box-shadow:0 0 12px rgba(61,220,151,.6)}
 .nav a.active svg{stroke:var(--mint)}
 .badge-hot{
   margin-left:auto;font-family:var(--fm);font-weight:800;font-size:9px;letter-spacing:.08em;
@@ -88,8 +112,29 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   border-bottom:1px solid var(--line);
 }
+/* the brand gradient as a one-pixel horizon under the glass */
+.topbar::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent 4%,rgba(61,220,151,.3) 30%,rgba(34,211,238,.24) 60%,transparent 96%)}
 .brand-top{display:none;align-items:center;gap:9px;flex:none;text-decoration:none;color:inherit}
 .brand-top .brand-mark{width:32px;height:32px;font-size:17px;border-radius:10px}
+/* Mobile ⋮ feature menu — the sidebar is hidden on phones, so this exposes the
+   same feature pages there. Hidden on desktop (sidebar is visible). */
+.topmenu{display:none;position:relative;flex:none}
+@media (max-width:720px){.topmenu{display:block}}
+.topmenu-btn{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--text);cursor:pointer}
+.topmenu-scrim{position:fixed;inset:0;z-index:70}
+.topmenu-dd{position:absolute;top:46px;left:0;z-index:71;width:246px;max-height:74vh;overflow-y:auto;background:var(--card);border:1px solid var(--line2);border-radius:14px;padding:8px;box-shadow:0 18px 50px rgba(0,0,0,.6)}
+.tmg{padding:2px}
+.tmg+.tmg{border-top:1px solid var(--line);margin-top:6px;padding-top:8px}
+.tmg-label{font-family:var(--fm);font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);padding:2px 8px 5px}
+.tmg-item{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:9px;color:var(--muted);font-weight:600;font-size:13.5px;text-decoration:none}
+.tmg-item.active{background:rgba(61,220,151,.12);color:var(--text)}
+.tmg-ic{display:grid;place-items:center;width:20px;flex:none;color:#3DF59F}
+.tmg-item svg{width:17px;height:17px;stroke:currentColor;stroke-width:2;fill:none}
+.tmg-badge{margin-left:auto;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:2px 5px;border-radius:5px}
+.tmg-badge.hot{background:rgba(255,120,80,.2);color:#FF9D4D}
+.tmg-badge.new{background:rgba(61,220,151,.16);color:#3DF59F}
+.tmg-badge.live{background:rgba(90,180,255,.16);color:#5AB4FF}
 .brand-top .brand-name{font-size:17px}
 .search{
   flex:1;max-width:520px;display:flex;align-items:center;gap:10px;
@@ -97,7 +142,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   border-radius:14px;padding:10px 15px;color:var(--muted);
   transition:border-color .15s, box-shadow .15s;
 }
-.search:focus-within{border-color:rgba(61,245,159,.55);box-shadow:0 0 0 3px rgba(61,245,159,.12)}
+.search:focus-within{border-color:rgba(61,220,151,.55);box-shadow:0 0 0 3px rgba(61,220,151,.12)}
 .search svg{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
 .search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:var(--fb);font-size:14px;min-width:0}
 .search input::placeholder{color:var(--faint)}
@@ -114,15 +159,15 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 }
 .btn-wallet:hover{background:rgba(255,255,255,.09);border-color:rgba(169,124,255,.5);transform:translateY(-1px)}
 .btn-wallet svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.btn-wallet.connected{border-color:rgba(61,245,159,.5);color:var(--mint);font-family:var(--fm);font-size:12px}
+.btn-wallet.connected{border-color:rgba(61,220,151,.5);color:var(--mint);font-family:var(--fm);font-size:12px}
 .btn-primary{
   display:inline-flex;align-items:center;gap:8px;flex:none;
   padding:10.5px 19px;border-radius:999px;background:var(--grad);
   color:#03150B;font-weight:800;font-size:13.5px;
-  box-shadow:0 8px 22px rgba(61,245,159,.3), inset 0 1.5px 0 rgba(255,255,255,.55);
+  box-shadow:0 8px 22px rgba(61,220,151,.3), inset 0 1.5px 0 rgba(255,255,255,.55);
   transition:transform .16s cubic-bezier(.2,.8,.3,1.2), box-shadow .16s;white-space:nowrap;
 }
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(61,245,159,.45), inset 0 1.5px 0 rgba(255,255,255,.55)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(61,220,151,.45), inset 0 1.5px 0 rgba(255,255,255,.55)}
 
 /* ============ TICKER ============ */
 .ticker{overflow:hidden;border-bottom:1px solid var(--line);background:rgba(255,255,255,.02)}
@@ -141,7 +186,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .content{padding:16px 20px 20px;display:flex;flex-direction:column;gap:16px;max-width:1520px;width:100%}
 .view{display:flex;flex-direction:column;gap:16px}
 .page-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.page-ic{width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:18px;background:linear-gradient(135deg,rgba(61,245,159,.22),rgba(34,211,238,.12));border:1px solid rgba(61,245,159,.3)}
+.page-ic{width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:18px;background:linear-gradient(135deg,rgba(61,220,151,.22),rgba(34,211,238,.12));border:1px solid rgba(61,220,151,.3)}
 .page-head h2{font-family:var(--fd);font-weight:700;font-size:23px;letter-spacing:-.02em}
 .page-sub{color:var(--muted);font-size:13px;width:100%;margin-top:-4px}
 .panel{
@@ -150,108 +195,23 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   box-shadow:0 16px 40px rgba(0,0,0,.32);padding:20px;
 }
 
-/* ============ PROMO CAROUSEL ============ */
-.promo{position:relative;flex:none;height:208px;border-radius:22px;overflow:hidden;border:1px solid var(--line2);box-shadow:0 22px 52px rgba(0,0,0,.4)}
-.promo-track{display:flex;height:100%;transition:transform .55s cubic-bezier(.3,.8,.3,1)}
-.slide{flex:0 0 100%;min-width:100%;height:100%;position:relative;display:flex;align-items:center;padding:24px 38px;overflow:hidden}
-.slide-copy{position:relative;z-index:6;max-width:62%}
+/* ============ HERO SHARED BITS ============
+   The rotating PROMO CAROUSEL lived here (slides, orbits, sparkles, dots),
+   then a command-deck hero replaced it, and BOTH are retired — the home now
+   opens Moontok-style on the intel cards (see MOONTOK ARRANGEMENT below).
+   What survives here is only what other surfaces share. */
 .s-eyebrow{font-family:var(--fm);font-size:9.5px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.slide h2{font-family:var(--fd);font-weight:700;font-size:clamp(22px,2.4vw,31px);letter-spacing:-.02em;line-height:1.06;margin-bottom:8px}
-.slide p{font-size:13px;line-height:1.55;margin-bottom:15px;max-width:52ch}
-.grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-.btn-slide{
-  display:inline-flex;align-items:center;gap:8px;padding:11.5px 21px;border-radius:999px;
-  background:var(--grad);color:#03150B;font-weight:800;font-size:13.5px;
-  box-shadow:0 10px 26px rgba(61,245,159,.38), inset 0 2px 0 rgba(255,255,255,.6);
-  transition:transform .16s cubic-bezier(.2,.8,.3,1.2), box-shadow .16s;
-}
-.btn-slide:hover{transform:translateY(-2px) scale(1.02)}
-.s-moon{
-  background:radial-gradient(600px 300px at 86% 6%, rgba(61,245,159,.14), transparent 58%),
-  radial-gradient(460px 280px at 62% 98%, rgba(124,58,237,.15), transparent 60%),
-  linear-gradient(160deg,#0E1621 0%,#0A0F19 60%,#0B0D16 100%);
-}
-.s-moon .s-eyebrow{color:var(--mint)}
-.s-moon p{color:var(--muted)}
-.mini-orbits{position:absolute;right:26px;top:50%;transform:translateY(-50%);width:220px;height:220px;pointer-events:none;z-index:2}
-.orbit{position:absolute;border:1.5px dashed rgba(61,245,159,.32);border-radius:50%}
-.orbit.oa{inset:0;animation:spin 46s linear infinite}
-.orbit.ob{inset:40px;border-color:rgba(169,124,255,.34);animation:spin 30s linear infinite reverse}
-@keyframes spin{to{transform:rotate(1turn)}}
-.sat{position:absolute;left:50%}
-.sat.top{top:0}.sat.bot{top:100%}
-.oa .sat{animation:spin 46s linear infinite reverse}
-.ob .sat{animation:spin 30s linear infinite}
-.fcoin{
-  border-radius:50%;display:grid;place-items:center;position:relative;
-  border:2.5px solid rgba(255,255,255,.32);
-  box-shadow:0 10px 24px rgba(0,0,0,.5), inset 0 3px 8px rgba(255,255,255,.45), 0 0 24px var(--glow,transparent);
-}
-.fcoin::after{content:"";position:absolute;top:9%;left:15%;width:42%;height:24%;border-radius:50%;background:rgba(255,255,255,.45);filter:blur(2.5px);transform:rotate(-22deg)}
-.sat .fcoin{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
-.c-gold{background:radial-gradient(circle at 32% 26%,#FFE9A8,#FFC53D 45%,#B57900);--glow:rgba(255,197,61,.4)}
-.c-cyanc{background:radial-gradient(circle at 32% 26%,#B0F2FF,#22D3EE 45%,#0A7F96);--glow:rgba(34,211,238,.45)}
-.c-viol{background:radial-gradient(circle at 32% 26%,#E2CCFF,#A97CFF 45%,#6524C9);--glow:rgba(169,124,255,.45)}
-.c-green{background:radial-gradient(circle at 32% 26%,#B8FFD0,#3DF59F 45%,#0B9E5E);--glow:rgba(61,245,159,.45)}
-.sz36{width:36px;height:36px;font-size:16px}
-.sz30{width:30px;height:30px;font-size:13px}
-.fcoin-main{
-  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:82px;height:82px;
-  background:radial-gradient(circle at 32% 26%,#8DFFC4,#3DF59F 42%,#0B9E5E 100%);
-  font-family:var(--fd);font-weight:700;font-size:40px;color:#03150B;
-  --glow:rgba(61,245,159,.55);animation:breathe 5.5s ease-in-out infinite;
-}
-@keyframes breathe{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.05)}}
-.blip-tag{
-  position:absolute;white-space:nowrap;z-index:7;
-  font-family:var(--fm);font-size:10px;font-weight:800;color:#03150B;background:var(--mint);
-  border-radius:9px;padding:5px 10px;
-  box-shadow:0 8px 20px rgba(61,245,159,.4);animation:floaty 6.5s ease-in-out infinite alternate;
-}
-@keyframes floaty{from{transform:translateY(-6px)}to{transform:translateY(7px)}}
-.s-moon .blip-tag{right:230px;top:22px}
-.sparkle{position:absolute;color:var(--mint);animation:twinkle 2.8s ease-in-out infinite;font-weight:800;font-family:var(--fm);font-size:13px;z-index:2}
-@keyframes twinkle{0%,100%{opacity:.15;transform:scale(.8)}50%{opacity:.95;transform:scale(1.2)}}
-.s-boost{background:linear-gradient(135deg,#B07CFF 0%,#8B4DF0 55%,#6D28D9 100%);color:#fff}
-.s-boost::before,.s-pump::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.28),transparent 36%);opacity:.8;pointer-events:none}
-.s-boost .s-eyebrow{color:#F0E4FF}
-.s-boost p{color:rgba(255,255,255,.85)}
-.boost-btn{
-  position:relative;display:inline-flex;align-items:center;gap:7px;
-  padding:11px 20px;border-radius:999px;background:rgba(12,5,28,.55);color:#fff;font-weight:800;font-size:13px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 8px 20px rgba(20,5,50,.4);transition:all .15s;
-}
-.boost-btn:hover{transform:translateY(-2px);background:rgba(12,5,28,.75)}
-.s-boost .wm{position:absolute;right:36px;bottom:-16px;font-size:112px;opacity:.22;transform:rotate(-12deg);pointer-events:none;z-index:1}
-.s-pump{background:linear-gradient(135deg,#52FFA6 0%,#1BE28B 52%,#0FBF74 100%);color:#03200F}
-.s-pump .s-eyebrow{color:#04351B}
 .coin{
   width:44px;height:44px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:21px;
   border:2.5px solid rgba(255,255,255,.42);
   box-shadow:inset 0 3px 7px rgba(255,255,255,.5), inset 0 -4px 8px rgba(0,0,0,.2), 0 8px 18px rgba(0,0,0,.3);
 }
-.pump-inline{display:flex;align-items:center;gap:13px;margin:2px 0 9px;position:relative;flex-wrap:wrap}
-.pump-x{font-family:var(--fm);font-weight:800;font-size:44px;line-height:1;letter-spacing:-.03em;color:#02180B;text-shadow:0 2px 0 rgba(255,255,255,.3)}
-.chip-since{
-  font-family:var(--fm);font-size:9.5px;font-weight:800;letter-spacing:.1em;
-  color:#EAFFF3;background:#04351B;border-radius:999px;padding:6px 11px;
-  display:inline-flex;align-items:center;gap:5px;
+/* Ticker-monogram placeholder (logo-less tokens) — clean initials, not a
+   random emoji. Scales with the coin's font-size; sits above the gradient. */
+.coin-mono{
+  font-family:var(--fd);font-weight:800;font-size:.82em;letter-spacing:-.04em;
+  color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);line-height:1;user-select:none;
 }
-.pump-meta{font-family:var(--fm);font-size:12.5px;font-weight:700;color:#054524;position:relative}
-.pump-meta b{color:#02180B}
-.s-pump .wm{position:absolute;right:-8px;bottom:-12px;width:260px;height:120px;opacity:.15;pointer-events:none;z-index:1}
-.promo-dots{position:absolute;left:38px;bottom:15px;display:flex;gap:7px;z-index:9}
-.pdot{width:8px;height:8px;border-radius:99px;background:rgba(255,255,255,.4);padding:0;transition:all .3s}
-.pdot.active{width:22px;background:#fff;box-shadow:0 0 10px rgba(255,255,255,.5)}
-.promo-nav{position:absolute;right:16px;bottom:12px;display:flex;gap:8px;z-index:9}
-.pbtn{
-  width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
-  background:rgba(0,0,0,.3);color:#fff;font-size:14px;font-weight:700;
-  border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(4px);transition:all .15s;
-}
-.pbtn:hover{background:rgba(0,0,0,.5);transform:scale(1.08)}
-
 /* ============ PULSE STRIP ============ */
 .pulse-strip{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.15) transparent}
 .pulse-strip::-webkit-scrollbar{height:6px}
@@ -260,24 +220,58 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   flex:1 0 305px;min-width:0;height:162px;scroll-snap-align:start;
   border:1px solid var(--line2);border-radius:18px;
   background:linear-gradient(180deg,rgba(255,255,255,.03),transparent 22%),var(--card);
-  box-shadow:0 14px 34px rgba(0,0,0,.3);padding:13px 15px;
+  box-shadow:0 14px 34px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05);padding:13px 15px;
   display:flex;flex-direction:column;gap:10px;
 }
 .wcard-head{display:flex;align-items:center;gap:9px}
-.wcard-head .ic{width:28px;height:28px;border-radius:10px;display:grid;place-items:center;font-size:13.5px;flex:none;background:linear-gradient(135deg,rgba(61,245,159,.22),rgba(34,211,238,.12));border:1px solid rgba(61,245,159,.3)}
+.wcard-head .ic{width:28px;height:28px;border-radius:10px;display:grid;place-items:center;font-size:13.5px;flex:none;background:linear-gradient(135deg,rgba(61,220,151,.22),rgba(34,211,238,.12));border:1px solid rgba(61,220,151,.3)}
 .wcard-head h3{font-family:var(--fd);font-weight:700;font-size:14px;white-space:nowrap}
 .live-pill{font-family:var(--fm);font-size:8px;font-weight:800;letter-spacing:.14em;color:#03150B;background:var(--mint);border-radius:999px;padding:3px 7px}
 .wcard-head .more{margin-left:auto;font-family:var(--fm);font-size:9.5px;font-weight:700;letter-spacing:.08em;color:var(--mint);text-transform:uppercase;white-space:nowrap}
 .heat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1}
-.heat-cell{border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:rgba(255,255,255,.02);display:flex;flex-direction:column;justify-content:center}
-.heat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-.heat-chain{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:10px;font-weight:700;color:var(--text)}
-.heat-chain .cdot{width:7px;height:7px;border-radius:50%;box-shadow:0 0 8px currentColor}
-.heat-temp{font-family:var(--fm);font-weight:800;font-size:14px;color:var(--mint)}
+.heat-cell{border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:rgba(255,255,255,.02);display:flex;flex-direction:column;justify-content:center;min-width:0}
+.heat-chain{display:flex;align-items:center;gap:6px;min-width:0;margin-bottom:5px}
+.heat-chain .heat-name{font-family:var(--fm);font-size:10px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.heat-temp{font-family:var(--fm);font-weight:800;font-size:19px;line-height:1;color:var(--mint);margin-bottom:7px}
+.heat-temp .deg{font-size:.62em;opacity:.65;margin-left:1px}
 .heat-kv{display:flex;justify-content:space-between;font-family:var(--fm);font-size:9.5px;color:var(--faint)}
 .heat-kv b{color:var(--muted)}
 .heat-bar{height:4px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:7px}
 .heat-bar i{display:block;height:100%;border-radius:99px;background:var(--grad)}
+/* Homepage ad row — every live booking side by side (Standard = half the row,
+   Wide = the whole row). One placement only; extra inventory pages inside it. */
+.home-ads{display:flex;flex-direction:column;gap:8px}
+.home-ads-row{display:flex;gap:13px;justify-content:center}
+.home-banner{position:relative;display:block;border-radius:16px;overflow:hidden;border:1px solid var(--line2);box-shadow:0 10px 30px rgba(0,0,0,.28);line-height:0;background:rgba(255,255,255,.02)}
+/* --u is the slot's weight (Standard 1, Wide 2, house 4). flex-basis:0 makes the
+   widths purely proportional, so a sold-out row is exactly 2:1:1 while a row
+   that isn't sold out stretches to fill instead of leaving dead space.
+   max-width caps that stretch at 2× the slot's designed share: a creative can
+   only grow so far before its own aspect ratio makes it too tall and the height
+   cap letterboxes it inside its tile — a lone Standard at full width did exactly
+   that. Capped, a lone Standard runs at half the row (~294px) and a lone Wide
+   fills it completely (~296px), neither letterboxed; the row centres whatever
+   is left over. */
+.home-banner{flex:var(--u,1) 1 0;min-width:0;max-width:calc(var(--u,1) * 50%)}
+/* The tile's aspect-ratio comes from the SOLD size (set inline), so a row of
+   bookings in the same slot always lines up. `cover` then fills that box: an
+   advertiser who supplies the spec size sees their creative untouched, and one
+   who supplies a different shape is cropped rather than being allowed to set
+   the row's height for everyone else. */
+.home-banner img{width:100%;height:100%;object-fit:cover;display:block}
+.home-banner-tag{position:absolute;top:8px;right:10px;font-family:var(--fm);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(0,0,0,.5);color:#fff;padding:2px 8px;border-radius:999px}
+.home-banner-tag i{font-style:normal;font-weight:500;opacity:.7}
+.home-ads-dots{display:flex;gap:6px;justify-content:center}
+/* /advertise: a real creative at this package's size, shown at its true width
+   relative to the other package so the difference is visible, not just stated */
+.banner-example{margin:2px 0 10px;display:flex;flex-direction:column;gap:5px}
+.banner-example img{display:block;height:auto;border-radius:8px;border:1px solid var(--line2)}
+.banner-example-cap{font-family:var(--fm);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+.home-ads-dots button{width:18px;height:4px;border-radius:99px;border:0;padding:0;cursor:pointer;background:rgba(255,255,255,.18);transition:background .2s}
+.home-ads-dots button.on{background:var(--grad)}
+/* Phones: one banner per row — two half-width ads would be unreadable. */
+/* Phones: stack them — side-by-side quarters would be unreadable. */
+@media (max-width:820px){.home-ads-row{flex-wrap:wrap}.home-banner{flex-basis:100%}}
 .fg{display:flex;align-items:center;gap:14px;flex:1;min-width:0}
 .fg svg{width:122px;height:70px;flex:none;overflow:visible}
 .fg-col{display:flex;flex-direction:column;min-width:0}
@@ -302,7 +296,13 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .flame{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;font-size:17px;background:linear-gradient(135deg,#FF9D4D,#FF5C7A);box-shadow:0 8px 20px rgba(255,120,80,.4), inset 0 2px 0 rgba(255,255,255,.45)}
 .ttabs{display:flex;gap:4px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:12px;padding:4px}
 .ttab{font-family:var(--fm);font-size:11px;font-weight:800;padding:6px 12px;border-radius:9px;color:var(--muted);transition:all .14s}
-.ttab.active{background:linear-gradient(120deg,rgba(61,245,159,.24),rgba(34,211,238,.15));color:#D9FFE9}
+.ttab.active{background:linear-gradient(120deg,rgba(61,220,151,.24),rgba(34,211,238,.15));color:#D9FFE9}
+/* Trending chain filter — horizontally scrollable pills with the chain logo */
+.chain-pick{display:flex;gap:7px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chain-pick::-webkit-scrollbar{display:none}
+.chain-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;font-family:var(--fm);font-weight:800;font-size:12px;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:999px;padding:7px 13px;cursor:pointer;white-space:nowrap;transition:all .14s}
+.chain-chip:hover{color:var(--text);border-color:rgba(255,255,255,.2)}
+.chain-chip.active{color:#D9FFE9;background:linear-gradient(120deg,rgba(61,220,151,.24),rgba(34,211,238,.15));border-color:rgba(61,220,151,.4)}
 .filter-btn{
   margin-left:auto;display:inline-flex;align-items:center;gap:7px;
   padding:9px 15px;border-radius:11px;border:1.5px solid var(--line);
@@ -319,10 +319,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 }
 .tab .cdot{width:7px;height:7px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
 .tab:hover{color:var(--text);border-color:var(--line2)}
-.tab.active{background:linear-gradient(120deg,rgba(61,245,159,.18),rgba(34,211,238,.1));border-color:rgba(61,245,159,.55);color:#D9FFE9}
+.tab.active{background:linear-gradient(120deg,rgba(61,220,151,.18),rgba(34,211,238,.1));border-color:rgba(61,220,151,.55);color:#D9FFE9}
 
 /* ============ BOARD ============ */
-.board{border:1px solid var(--line2);border-radius:22px;overflow:hidden;overflow-x:auto;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 12%),var(--card);box-shadow:0 22px 52px rgba(0,0,0,.4)}
+.board{border:1px solid var(--line2);border-radius:22px;overflow:hidden;overflow-x:auto;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 12%),var(--card);box-shadow:0 22px 52px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05)}
 .board::-webkit-scrollbar{height:7px}
 .board::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13);border-radius:99px}
 .row{
@@ -336,20 +336,39 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .sarrow{font-size:8px;opacity:.5}
 .sortable.on .sarrow{opacity:1}
 .row:not(.head){cursor:pointer}
-.row:not(.head):hover{background:rgba(61,245,159,.05);box-shadow:inset 3px 0 0 var(--mint)}
+.row:not(.head):hover{background:rgba(61,220,151,.05);box-shadow:inset 3px 0 0 var(--mint)}
 .c-num{text-align:right}
 .rank{font-family:var(--fm);font-weight:700;font-size:13px;color:var(--faint)}
-.rank .medal{font-size:15px}
+/* Drawn metal roundels — the .fcoin grammar (radial highlight, inner shine),
+   at rank size. Emoji medals were the one OS-supplied glyph left on the board:
+   Apple gold next to Windows gold is two different products. */
+.rank .medal{
+  width:23px;height:23px;border-radius:50%;display:inline-grid;place-items:center;
+  font-family:var(--fm);font-weight:800;font-size:10.5px;line-height:1;
+  border:1px solid rgba(255,255,255,.34);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5), inset 0 -2px 3px rgba(0,0,0,.28), 0 2px 6px rgba(0,0,0,.35);
+}
+.medal-1{background:radial-gradient(circle at 32% 26%,#FFEDB0,#FFC53D 52%,#B57900);color:#241703}
+.medal-2{background:radial-gradient(circle at 32% 26%,#F2F6FC,#C7D0DC 52%,#8B96A6);color:#1C2430}
+.medal-3{background:radial-gradient(circle at 32% 26%,#F7CDA6,#D98A4C 52%,#8C4F1E);color:#2A1503}
 .tok{display:flex;align-items:center;gap:12px;min-width:0}
 .coin-wrap{position:relative;flex:none}
 .tok .coin{width:38px;height:38px;font-size:18px;border-width:2px}
 .cbadge{position:absolute;right:-3px;bottom:-3px;width:15px;height:15px;border-radius:50%;border:2.5px solid var(--card)}
 .tok .ts{min-width:0}
-.tok .sym{font-family:var(--fd);font-weight:700;font-size:15px;white-space:nowrap}
+.tok .sym{font-family:var(--fd);font-weight:700;font-size:15px;display:flex;align-items:center;gap:7px;min-width:0}
+.tok .sym>span:first-child,.tok .sym-txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the tier tag ALWAYS renders whole (no "◆ Di…"); an over-long ticker yields
+   the leftover space and ellipsises instead */
+.tok .sym-txt{flex:0 1 auto;min-width:0;max-width:16ch}
+.tok .sym .tier-chip{flex:0 0 auto}
 .tok .nm{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* compact stats line — the columns hidden on small screens live here instead */
+.tok .m-stats{display:none;font-family:var(--fm);font-size:10px;font-weight:700;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.tok .m-stats b{color:var(--muted);font-weight:800}
 .price{font-family:var(--fm);font-weight:800;font-size:13px;transition:color .3s}
 .mono-dim{font-family:var(--fm);font-weight:600;font-size:12.5px;color:var(--muted)}
-.chg{display:inline-flex;font-family:var(--fm);font-weight:800;font-size:11.5px;border-radius:9px;padding:6px 9px}
+.chg{display:inline-flex;justify-content:center;min-width:66px;font-family:var(--fm);font-weight:800;font-size:11.5px;border-radius:9px;padding:6px 9px}
 .chg.up{color:#063A1F;background:linear-gradient(120deg,#4DFFA6,#25E890)}
 .chg.dn{color:#fff;background:linear-gradient(120deg,#FF7291,#FF4D6D)}
 .tx-cell{font-family:var(--fm);text-align:right;line-height:1.35}
@@ -358,15 +377,17 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .tx-split .b{color:var(--mint)}.tx-split .s{color:var(--red)}.tx-split .sl{color:var(--faint)}
 .info-cell{display:flex;gap:6px;align-items:center}
 .ichip{font-family:var(--fm);font-size:10.5px;font-weight:700;border:1px solid var(--line);border-radius:9px;padding:4.5px 8px;display:inline-flex;gap:5px;align-items:center;color:var(--muted);background:rgba(255,255,255,.02);white-space:nowrap}
-.ichip.good{color:var(--mint);border-color:rgba(61,245,159,.3)}
+.ichip.good{color:var(--mint);border-color:rgba(61,220,151,.3)}
 .age-chip{font-family:var(--fm);font-size:10.5px;font-weight:800;color:var(--cyan);border:1px solid rgba(34,211,238,.35);border-radius:9px;padding:4.5px 9px;white-space:nowrap;background:rgba(34,211,238,.07)}
 .star{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:var(--faint);transition:all .15s}
 .star svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linejoin:round}
-.star:hover{color:var(--gold);background:rgba(255,209,102,.12)}
-.star.on{color:var(--gold)}
-.star.on svg{fill:var(--gold)}
+.star:hover{color:var(--acc);background:rgba(38,198,245,.12)}
+.star.on{color:var(--acc)}
+.star.on svg{fill:var(--acc)}
 .flash-up .price{color:var(--mint)}
 .flash-dn .price{color:var(--red)}
+.row.flash-up,.mv-row.flash-up{background:rgba(61,220,151,.05)}
+.row.flash-dn,.mv-row.flash-dn{background:rgba(255,92,122,.05)}
 .empty{padding:36px;text-align:center;color:var(--muted);font-size:14px}
 /* new pairs layout */
 .np .row{grid-template-columns:50px minmax(200px,1.7fr) 96px 118px 92px 108px 148px 44px}
@@ -379,21 +400,21 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   padding:11px 13px;color:var(--text);font-family:var(--fb);font-size:13.5px;outline:none;
   transition:border-color .15s, box-shadow .15s;width:100%;
 }
-.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:rgba(61,245,159,.55);box-shadow:0 0 0 3px rgba(61,245,159,.12)}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:rgba(61,220,151,.55);box-shadow:0 0 0 3px rgba(61,220,151,.12)}
 .fld select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 18px) 55%,calc(100% - 13px) 55%;background-size:5px 5px;background-repeat:no-repeat}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .hint{font-size:11.5px;color:var(--faint)}
 .tier-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .tier{position:relative;border:1.5px solid var(--line);border-radius:16px;padding:16px 15px;cursor:pointer;background:rgba(255,255,255,.02);transition:all .15s}
 .tier:hover{border-color:var(--line2);transform:translateY(-2px)}
-.tier.sel{border-color:rgba(61,245,159,.6);background:rgba(61,245,159,.07);box-shadow:0 8px 24px rgba(61,245,159,.15)}
+.tier.sel{border-color:rgba(61,220,151,.6);background:rgba(61,220,151,.07);box-shadow:0 8px 24px rgba(61,220,151,.15)}
 .tier .tname{font-family:var(--fd);font-weight:700;font-size:15px;margin-bottom:3px}
 .tier .tprice{font-family:var(--fm);font-weight:800;font-size:19px;color:var(--mint);margin-bottom:8px}
 .tier ul{list-style:none;display:flex;flex-direction:column;gap:5px}
 .tier li{font-size:11.5px;color:var(--muted);display:flex;gap:6px}
 .tier li::before{content:"✓";color:var(--mint);font-weight:800}
-.tier .pop{position:absolute;top:-9px;right:12px;font-family:var(--fm);font-size:8.5px;font-weight:800;letter-spacing:.1em;color:#03150B;background:var(--gold);border-radius:999px;padding:3.5px 9px}
-.calc-out{border:1px solid rgba(61,245,159,.35);border-radius:16px;background:linear-gradient(140deg,rgba(61,245,159,.12),rgba(34,211,238,.05)),rgba(255,255,255,.02);padding:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;text-align:center}
+.tier .pop{position:absolute;top:-9px;right:12px;font-family:var(--fm);font-size:8.5px;font-weight:800;letter-spacing:.1em;color:#03150B;background:var(--acc);border-radius:999px;padding:3.5px 9px}
+.calc-out{border:1px solid rgba(61,220,151,.35);border-radius:16px;background:linear-gradient(140deg,rgba(61,220,151,.12),rgba(34,211,238,.05)),rgba(255,255,255,.02);padding:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;text-align:center}
 .co .v{font-family:var(--fm);font-weight:800;font-size:clamp(18px,2vw,26px);color:var(--mint)}
 .co .v.dim{color:var(--text)}
 .co .l{font-family:var(--fm);font-size:9.5px;font-weight:700;letter-spacing:.14em;color:var(--faint);text-transform:uppercase;margin-top:5px}
@@ -405,12 +426,12 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .cv.warn{color:#2A1102;background:linear-gradient(120deg,#FFC46B,#FF7A4D)}
 .cv.bad{color:#fff;background:linear-gradient(120deg,#FF7291,#FF4D6D)}
 .verdict{display:flex;align-items:center;gap:12px;border-radius:14px;padding:14px 16px;font-weight:800;font-size:14px;margin-top:12px}
-.verdict.ok{background:rgba(61,245,159,.12);border:1px solid rgba(61,245,159,.4);color:var(--mint)}
+.verdict.ok{background:rgba(61,220,151,.12);border:1px solid rgba(61,220,151,.4);color:var(--mint)}
 .verdict.warn{background:rgba(255,157,77,.12);border:1px solid rgba(255,157,77,.4);color:var(--orange)}
 .guide-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .guide{display:flex;gap:13px;align-items:flex-start;border:1px solid var(--line2);border-radius:16px;padding:16px;background:rgba(255,255,255,.02);cursor:pointer;transition:all .15s}
-.guide:hover{border-color:rgba(61,245,159,.4);transform:translateY(-2px);background:rgba(255,255,255,.04)}
-.guide .gi{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:18px;flex:none;background:linear-gradient(135deg,rgba(61,245,159,.2),rgba(34,211,238,.1));border:1px solid rgba(61,245,159,.3)}
+.guide:hover{border-color:rgba(61,220,151,.4);transform:translateY(-2px);background:rgba(255,255,255,.04)}
+.guide .gi{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:18px;flex:none;background:linear-gradient(135deg,rgba(61,220,151,.2),rgba(34,211,238,.1));border:1px solid rgba(61,220,151,.3)}
 .guide h4{font-family:var(--fd);font-weight:700;font-size:14.5px;margin-bottom:3px}
 .guide p{font-size:12px;color:var(--muted);line-height:1.5}
 .guide .rt{font-family:var(--fm);font-size:10px;color:var(--faint);margin-top:6px;font-weight:700}
@@ -422,13 +443,13 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .acct-row:last-child{border-bottom:none}
 .acct-row .av{margin-left:auto;font-family:var(--fm);font-weight:700;font-size:12.5px;color:var(--text)}
 .mini-listing{display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:13px;padding:11px 13px;background:rgba(255,255,255,.02)}
-.status-chip{margin-left:auto;font-family:var(--fm);font-size:9.5px;font-weight:800;letter-spacing:.08em;color:var(--gold);border:1px solid rgba(255,209,102,.4);border-radius:999px;padding:4px 10px;background:rgba(255,209,102,.08)}
+.status-chip{margin-left:auto;font-family:var(--fm);font-size:9.5px;font-weight:800;letter-spacing:.08em;color:var(--amber);border:1px solid rgba(255,209,102,.4);border-radius:999px;padding:4px 10px;background:rgba(255,209,102,.08)}
 .big-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:38px 20px;text-align:center}
 .big-empty .em{font-size:40px}
 .big-empty p{color:var(--muted);font-size:13px;max-width:40ch}
 .tagrow{display:flex;gap:8px;flex-wrap:wrap}
 .qtag{font-family:var(--fm);font-size:11.5px;font-weight:700;color:var(--muted);border:1.5px solid var(--line);border-radius:999px;padding:7px 13px;background:rgba(255,255,255,.02);transition:all .15s}
-.qtag:hover{color:var(--mint);border-color:rgba(61,245,159,.45)}
+.qtag:hover{color:var(--mint);border-color:rgba(61,220,151,.45)}
 
 /* ============ MODALS / TOAST ============ */
 .modal-ov{position:fixed;inset:0;background:rgba(4,7,11,.72);backdrop-filter:blur(7px);z-index:200;display:none;align-items:center;justify-content:center;padding:18px}
@@ -451,7 +472,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .btn-ghost2{display:inline-flex;align-items:center;gap:7px;padding:11px 19px;border-radius:999px;border:1.5px solid var(--line2);color:var(--text);font-weight:700;font-size:13px;background:rgba(255,255,255,.04);transition:all .15s}
 .btn-ghost2:hover{background:rgba(255,255,255,.08)}
 .success-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px 0 6px;text-align:center}
-.success-ic{width:64px;height:64px;border-radius:50%;background:var(--grad);display:grid;place-items:center;font-size:30px;color:#03150B;box-shadow:0 12px 34px rgba(61,245,159,.4)}
+.success-ic{width:64px;height:64px;border-radius:50%;background:var(--grad);display:grid;place-items:center;font-size:30px;color:#03150B;box-shadow:0 12px 34px rgba(61,220,151,.4)}
 .detail-head{display:flex;align-items:center;gap:14px}
 .detail-head .coin{width:52px;height:52px;font-size:25px}
 .detail-price{font-family:var(--fm);font-weight:800;font-size:24px;margin-left:auto;text-align:right}
@@ -461,24 +482,64 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .ds .v{font-family:var(--fm);font-weight:800;font-size:13.5px}
 .ca-box{display:flex;align-items:center;gap:10px;border:1px solid var(--line2);border-radius:12px;padding:10px 13px;background:rgba(255,255,255,.03)}
 .ca-box code{font-family:var(--fm);font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.copy-btn{font-family:var(--fm);font-size:10.5px;font-weight:800;color:var(--mint);border:1px solid rgba(61,245,159,.4);border-radius:9px;padding:6px 11px;transition:all .15s;flex:none}
-.copy-btn:hover{background:rgba(61,245,159,.12)}
+.copy-btn{font-family:var(--fm);font-size:10.5px;font-weight:800;color:var(--mint);border:1px solid rgba(61,220,151,.4);border-radius:9px;padding:6px 11px;transition:all .15s;flex:none}
+.copy-btn:hover{background:rgba(61,220,151,.12)}
 .soc-row{display:flex;gap:9px}
 .soc{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;border:1.5px solid var(--line2);color:var(--muted);font-weight:800;font-size:13px;transition:all .15s}
-.soc:hover{color:var(--text);border-color:rgba(61,245,159,.45)}
+.soc:hover{color:var(--text);border-color:rgba(61,220,151,.45)}
 .detail-spark{width:100%;height:92px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.02);padding:8px}
 .toast{
   position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(16px);
   opacity:0;pointer-events:none;z-index:400;
-  background:#101B2A;border:1px solid rgba(61,245,159,.45);border-radius:13px;
+  background:#101B2A;border:1px solid rgba(61,220,151,.45);border-radius:13px;
   padding:12px 19px;font-weight:700;font-size:13px;color:var(--text);
   box-shadow:0 16px 44px rgba(0,0,0,.5);transition:all .28s;white-space:nowrap;
 }
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
 .foot{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:6px 4px 14px;font-family:var(--fm);font-size:11.5px;font-weight:600;color:var(--faint)}
-.foot .links{margin-left:auto;display:flex;gap:18px}
+/* wraps: eight links in one unbreakable row was the only thing wider than a
+   phone — the whole page scrolled sideways for the footer's sake */
+.foot .links{margin-left:auto;display:flex;gap:12px 18px;flex-wrap:wrap;min-width:0}
 .foot a:hover{color:var(--mint)}
+.foot .foot-soon{opacity:.55;cursor:default}
+/* Sidebar community row — sits under the nav groups, quiet until hovered. */
+.side-soc{display:flex;gap:8px;margin:14px 10px 4px;padding-top:12px;border-top:1px solid var(--line2)}
+.side-soc a{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 6px;border-radius:9px;
+  border:1px solid var(--line2);color:var(--faint);font-family:var(--fm);font-size:11px;font-weight:700;
+  letter-spacing:.03em;transition:color .15s,border-color .15s,background .15s}
+.side-soc a:hover{color:var(--mint);border-color:var(--mint);background:rgba(255,255,255,.03)}
+.side-soc svg{width:14px;height:14px;flex:none}
+/* Get Verified: how to reach a human before paying. */
+.verify-contact{margin-top:12px;padding-top:12px;border-top:1px solid var(--line2);font-size:12.5px;color:var(--faint)}
+.verify-contact a{color:var(--mint);font-weight:600}
+.verify-contact a:hover{text-decoration:underline}
+
+/* ── /community — every official channel in one place ─────────────────────── */
+.soc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:14px}
+.soc-card{display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid var(--line2);border-radius:14px;
+  background:var(--panel);transition:border-color .15s,background .15s,transform .15s}
+.soc-card:hover{border-color:var(--mint);background:rgba(255,255,255,.03);transform:translateY(-1px)}
+.soc-card.primary{border-color:rgba(80,230,180,.35)}
+.soc-ic{flex:none;width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+  background:rgba(255,255,255,.05);color:var(--faint)}
+.soc-card:hover .soc-ic{color:var(--mint)}
+.soc-card.telegram .soc-ic{background:rgba(42,171,238,.14);color:#2AABEE}
+.soc-card.x .soc-ic{background:rgba(255,255,255,.08);color:#e8e8e8}
+.soc-card.group .soc-ic{background:rgba(80,230,180,.14);color:var(--mint)}
+.soc-card.bot .soc-ic{background:rgba(160,140,255,.16);color:#a08cff}
+.soc-card.email .soc-ic{background:rgba(255,196,80,.14);color:#ffc450}
+.soc-ic svg{width:19px;height:19px}
+.soc-body{display:flex;flex-direction:column;gap:3px;min-width:0}
+.soc-name{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;color:var(--txt)}
+.soc-tag{font-family:var(--fm);font-size:9px;font-weight:800;letter-spacing:.08em;padding:2px 6px;border-radius:999px;
+  background:rgba(80,230,180,.16);color:var(--mint)}
+.soc-handle{font-family:var(--fm);font-size:11.5px;color:var(--mint)}
+.soc-blurb{font-size:12.5px;color:var(--faint);line-height:1.45}
+.soc-go{margin-left:auto;align-self:center;color:var(--faint);font-size:15px}
+.soc-card:hover .soc-go{color:var(--mint)}
+.soc-note{font-size:12.5px;color:var(--faint);line-height:1.6}
+@media (max-width:520px){.soc-grid{grid-template-columns:1fr}}
 
 /* ============ RESPONSIVE ============ */
 @media (max-width:1420px){.c-liq{display:none}.row{grid-template-columns:50px minmax(200px,1.7fr) 118px 92px 108px 108px 148px 128px 44px}.np .row{grid-template-columns:50px minmax(200px,1.7fr) 96px 118px 92px 148px 44px}}
@@ -496,9 +557,6 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 }
 @media (max-width:1000px){.c-vol{display:none}.row{grid-template-columns:50px minmax(180px,1.7fr) 114px 90px 102px 142px 44px}.btn-wallet .lbl{display:none}.guide-grid{grid-template-columns:1fr}}
 @media (max-width:860px){
-  .slide{padding:20px 24px}.slide-copy{max-width:74%}
-  .mini-orbits{right:-64px;opacity:.6}
-  .s-moon .blip-tag{display:none}
   .c-txns{display:none}
   .row{grid-template-columns:46px minmax(160px,1.6fr) 112px 90px 100px 42px}
   .np .row{grid-template-columns:46px minmax(160px,1.6fr) 88px 112px 90px 42px}
@@ -507,20 +565,28 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 }
 @media (max-width:720px){.app{grid-template-columns:1fr}.sidebar{display:none}.brand-top{display:flex}.content{padding:12px 14px 14px;gap:14px}}
 @media (max-width:600px){
-  .promo{height:192px}.slide{padding:18px 20px}.slide-copy{max-width:100%}
-  .slide h2{font-size:21px}.slide p{font-size:12px}
-  .promo-dots{left:20px}
   .c-mcap{display:none}
-  .row{grid-template-columns:40px minmax(140px,1.6fr) 106px 86px 42px;padding:12px 14px;gap:6px}
-  .np .row{grid-template-columns:40px minmax(140px,1.6fr) 80px 88px 42px}
+  .row{grid-template-columns:34px minmax(150px,1.8fr) 96px 74px 38px;padding:12px 12px;gap:6px}
+  .np .row{grid-template-columns:34px minmax(150px,1.8fr) 80px 88px 38px}
+  /* feature parity on phones: MC / Vol / Txns / Score move into the token cell */
+  .tok{gap:9px}
+  .tok .m-stats{display:block}
+  /* same priority as desktop: the tier tag always renders whole; an over-long
+     ticker ellipsises (base .sym-txt/.tier-chip flex rules are inherited here). */
+  .tok .sym{font-size:14px;gap:5px}
+  .tier-chip{font-size:8px;padding:2px 5px}
+  /* chain chips: one swipeable row instead of a tall wrap */
+  .tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto}
   .search kbd{display:none}.btn-primary .lbl{display:none}
   .ttabs{order:5;width:100%;justify-content:space-between}
   .filter-btn{margin-left:0}
   .calc-out{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){
-  .ticker-track,.dot-live,.orbit,.sat,.fcoin-main,.blip-tag,.sparkle,.nav .ldot{animation:none}
-  .promo-track{transition:none}
+  .ticker-track,.dot-live,.nav .ldot,
+  .sk::after,.live-pill{animation:none}
   *{transition:none!important}
 }
 
@@ -545,8 +611,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 }
 .src-pill.live{color:#03150B;background:var(--mint)}
 .src-pill.demo{color:#2A1102;background:linear-gradient(120deg,#FFC46B,#FF7A4D)}
+/* Text-style loading — still used by the token page, trades, signals and
+   new-listings. The home surfaces moved to .sk skeletons; these keep the quiet
+   line + pulsing dot. */
 .board-loading{padding:36px;text-align:center;color:var(--muted);font-size:13px;font-family:var(--fm)}
-@keyframes shimmer{0%{opacity:.4}50%{opacity:.9}100%{opacity:.4}}
 .board-loading .dot-live{display:inline-block;margin-right:8px;vertical-align:middle}
 .nav a{-webkit-tap-highlight-color:transparent}
 .verified-badge{color:var(--mint);font-size:12px;margin-left:4px}
@@ -564,39 +632,43 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   --text:#F5F6F8; --muted:#9BA1AC; --faint:#5B616C;
   --mint:#3DDC97; --mint-deep:#17B98A; --cyan:#4CC7D4;
   --violet:#B79CFF; --violet-deep:#6D4BD1;
-  --orange:#EDA765; --red:#F76A85; --gold:#E7C77A;
+  --orange:#EDA765; --red:#F76A85; --amber:#E7C77A;
   /* platinum sheen for primary actions — premium, not neon */
   --grad:linear-gradient(180deg,#FAFBFC 0%,#D6DAE1 100%);
 }
 
-/* premium background: quiet monochrome depth, no colored glows */
+/* premium background: quiet monochrome depth, no colored glows — plus a
+   whisper of grain on the page GROUND (cards paint their own surface over
+   it). Inline SVG: no asset to fetch, no request to fail. */
 body{
   background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.028'/%3E%3C/svg%3E"),
     radial-gradient(1200px 620px at 50% -22%, rgba(255,255,255,.045), transparent 62%),
     radial-gradient(760px 460px at 96% 0%, rgba(61,220,151,.035), transparent 58%),
     var(--bg);
 }
 
 /* keep the brand mark on its signature gradient (matches the favicon) */
-.brand-mark,.fcoin-main{
+.brand-mark{
   background:linear-gradient(135deg,#3DF59F,#22D3EE 58%,#12B9E0)!important;
   color:#03150B!important;
   box-shadow:0 8px 22px rgba(0,0,0,.55), inset 0 2px 3px rgba(255,255,255,.5), inset 0 -3px 6px rgba(0,40,25,.3)!important;
 }
 
 /* primary CTAs → platinum */
-.btn-primary,.fasttrack,.btn-slide{
+.btn-primary,.fasttrack{
   color:#0A0B0D!important;
   box-shadow:0 10px 26px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.85)!important;
 }
-.btn-primary:hover,.fasttrack:hover,.btn-slide:hover{
+.btn-primary:hover,.fasttrack:hover{
   box-shadow:0 16px 36px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.9)!important;
 }
 
 /* panels / cards / board → near-black glass with hairline edge */
 .panel,.wcard,.board{
   background:linear-gradient(180deg,rgba(255,255,255,.028),transparent 26%),var(--card);
-  box-shadow:0 24px 60px rgba(0,0,0,.55);
+  /* the hairline top highlight — the light source the metal roundels claim */
+  box-shadow:0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
 }
 .board .row:not(.head):hover{
   background:rgba(255,255,255,.035);
@@ -616,42 +688,6 @@ body{
 .chg.dn{color:#2A0710;background:linear-gradient(120deg,#FF8199,#F45C7C)}
 .src-pill.live{color:#04240F;background:var(--mint)}
 .live-pill{color:#04240F;background:var(--mint)}
-
-/* promo carousel → premium black slides (drop the neon/violet/green washes) */
-.s-moon{
-  background:
-    radial-gradient(560px 300px at 84% 8%, rgba(61,220,151,.10), transparent 60%),
-    radial-gradient(460px 300px at 60% 100%, rgba(255,255,255,.04), transparent 62%),
-    linear-gradient(160deg,#101215 0%,#0A0B0D 62%,#08090B 100%);
-}
-.s-boost{
-  background:
-    radial-gradient(600px 340px at 82% 0%, rgba(183,156,255,.14), transparent 60%),
-    linear-gradient(150deg,#141018 0%,#0C0A10 60%,#08090B 100%);
-  color:#F5F6F8;
-}
-.s-boost .s-eyebrow{color:#CDBCFF}
-.s-boost p{color:var(--muted)}
-.boost-btn{background:rgba(255,255,255,.08);color:#FFFFFF;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 20px rgba(0,0,0,.5)}
-.boost-btn:hover{background:rgba(255,255,255,.14)}
-.s-pump{
-  background:
-    radial-gradient(560px 320px at 20% 0%, rgba(61,220,151,.12), transparent 60%),
-    linear-gradient(150deg,#0F1512 0%,#0A0C0B 60%,#08090B 100%);
-  color:#F5F6F8;
-}
-.s-pump::before{background:none}
-.s-pump .s-eyebrow{color:var(--mint)}
-.pump-x{color:#EAFBF3;text-shadow:0 2px 0 rgba(0,0,0,.4)}
-.chip-since{color:#04240F;background:var(--mint)}
-.pump-meta{color:var(--muted)}
-.pump-meta b{color:#F5F6F8}
-.s-pump .wm path{stroke:rgba(61,220,151,.5)!important}
-.blip-tag{color:#04240F;background:var(--mint);box-shadow:0 8px 20px rgba(0,0,0,.5)}
-
-/* orbit dashes → subtle monochrome */
-.orbit.oa{border-color:rgba(255,255,255,.14)}
-.orbit.ob{border-color:rgba(183,156,255,.22)}
 
 /* pulse heat + gauge accents refined */
 .heat-temp{color:var(--mint)}
@@ -678,6 +714,36 @@ body{
 .tier-chip{--tc:#AAB2BD;display:inline-flex;align-items:center;gap:3px;font-family:var(--fm);font-weight:800;font-size:8.5px;letter-spacing:.06em;border-radius:6px;padding:2.5px 6px;white-space:nowrap;color:var(--tc);background:color-mix(in srgb,var(--tc) 14%,transparent);border:1px solid color-mix(in srgb,var(--tc) 34%,transparent)}
 .tier-glyph{font-size:9px;line-height:1}
 .tier-rank{opacity:.65;font-size:8px;font-weight:700}
+/* ── Wallet connect ── */
+.wallet-wrap{position:relative;display:inline-flex}
+.wallet-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:220;min-width:210px;
+  background:var(--card);border:1px solid var(--line2);border-radius:14px;padding:6px;
+  box-shadow:0 18px 44px rgba(0,0,0,.55)}
+.wmn-head{font-family:var(--fm);font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--faint);
+  padding:8px 10px 6px;border-bottom:1px solid var(--line2);margin-bottom:4px}
+.wmn-item{display:block;width:100%;text-align:left;font-size:12.5px;font-weight:600;color:var(--text);
+  padding:9px 10px;border-radius:9px;transition:background .12s}
+.wmn-item:hover{background:rgba(255,255,255,.06)}
+.wmn-item.danger{color:#FF8080}
+.wallet-modal{max-width:400px}
+.wm-title{font-family:var(--fd);font-weight:700;font-size:18px;margin-bottom:4px}
+.wm-sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+.wm-list{display:grid;gap:8px}
+.wm-item{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border-radius:12px;
+  border:1px solid var(--line2);background:rgba(255,255,255,.03);transition:all .12s;font-size:13.5px;font-weight:700;color:var(--text)}
+.wm-item:hover{background:rgba(255,255,255,.06);border-color:rgba(120,220,205,.3)}
+.wm-item:disabled{opacity:.55}
+.wm-icon{width:26px;height:26px;border-radius:7px;object-fit:contain}
+.wm-icon-fallback{display:grid;place-items:center;font-size:15px;color:var(--mint);background:rgba(255,255,255,.05)}
+.wm-name{flex:1;text-align:left}
+.wm-kind{font-family:var(--fm);font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--faint)}
+.wm-busy{color:var(--mint)}
+.wm-empty{font-size:12.5px;color:var(--muted);padding:8px 2px}
+.wm-installs{display:grid;gap:7px;margin-top:12px}
+.wm-install{display:block;padding:9px 12px;border-radius:10px;border:1px solid var(--line2);
+  font-size:12.5px;font-weight:700;color:var(--text)}
+.wm-install:hover{background:rgba(255,255,255,.05)}
+
 /* Live Trending-board slot badge (No.1 / No.2 …). */
 .trend-badge{display:inline-flex;align-items:center;gap:3px;font-family:var(--fm);font-weight:800;font-size:8.5px;letter-spacing:.04em;border-radius:6px;padding:2.5px 6px;white-space:nowrap;color:#FF9D5C;background:rgba(255,120,60,.12);border:1px solid rgba(255,120,60,.32)}
 .trend-badge.big{font-size:10px;padding:3.5px 9px}
@@ -736,6 +802,9 @@ body{
 .tp-actions{display:flex;gap:10px;align-items:center}
 .tp-subrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .tp-subrow .ca-box{flex:1;min-width:240px}
+.tp-about{padding:14px 18px}
+.tp-about-k{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.tp-about-p{margin:0;font-size:13.5px;line-height:1.65;color:var(--text);opacity:.88}
 .tp-grid{display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start}
 .tp-chart-wrap{border:1px solid var(--line2);border-radius:18px;overflow:hidden;background:#0a0c10;box-shadow:0 22px 52px rgba(0,0,0,.5);height:620px}
 .tp-chart{width:100%;height:664px;border:0;display:block}
@@ -763,6 +832,92 @@ body{
   .tp-chart{height:404px}
 }
 
+/* ============ CANDLESTICK CHART (token page) ============
+   Real OHLCV, drawn in the site's own type and colours. The panel it replaced
+   was either a GeckoTerminal iframe (another brand inside ours) or a curve
+   generated from the ticker's hash — see components/CandleChart.tsx. */
+.ck{display:flex;flex-direction:column;height:100%;min-width:0}
+.ck-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.ck-title{display:flex;align-items:center;gap:9px;min-width:0}
+.ck-sym{font-family:var(--fd);font-weight:700;font-size:14px}
+.ck-chg{font-family:var(--fm);font-size:12px;font-weight:700}
+.ck-chg.up{color:var(--mint)}
+.ck-chg.dn{color:var(--red)}
+.ck-chg-tf{color:var(--faint);font-weight:500}
+.ck-live{width:7px;height:7px;border-radius:50%;background:var(--mint);animation:ckpulse 2.2s ease-out infinite;flex:none}
+/* The fallback source, named only when it IS the fallback. Microlabel voice —
+   tracked uppercase at the faint weight — so it reads as chrome beside the
+   ticker rather than as a second piece of market data. */
+.ck-src{font-family:var(--fm);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);border:1px solid var(--line);border-radius:6px;padding:2px 6px;white-space:nowrap}
+@keyframes ckpulse{0%{box-shadow:0 0 0 0 rgba(61,220,151,.5)}70%{box-shadow:0 0 0 7px rgba(61,220,151,0)}100%{box-shadow:0 0 0 0 rgba(61,220,151,0)}}
+.ck-tfs{display:flex;gap:2px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:9px;padding:3px}
+.ck-tf{font-family:var(--fm);font-size:11px;font-weight:700;color:var(--faint);padding:4px 9px;border-radius:6px;background:transparent;border:0;cursor:pointer;transition:color .15s,background .15s}
+.ck-tf:hover{color:var(--text)}
+.ck-tf.on{background:rgba(61,220,151,.13);color:var(--mint)}
+/* The header's right-hand controls: the auto escape, LIN/LOG, the timeframes.
+   Wraps as one group so a narrow panel breaks between them, not inside one. */
+.ck-ctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+/* Only on screen while the axis is NOT the data's own — it is the escape hatch
+   and the tell at once, so a screenshot of a stretched chart says it is one. */
+.ck-auto{font-family:var(--fm);font-size:10.5px;font-weight:700;letter-spacing:.04em;color:var(--amber);background:rgba(231,199,122,.09);border:1px solid rgba(231,199,122,.35);border-radius:8px;padding:4px 8px;cursor:pointer;white-space:nowrap;transition:background .15s}
+.ck-auto:hover{background:rgba(231,199,122,.18)}
+.ck-plot{position:relative;flex:1;min-height:0;cursor:crosshair;touch-action:pan-y}
+/* A mouse drag on the body pans the price scale, and the cursor says so while
+   it is happening. ⚠️ `:active` rather than a class off `dragRef`: a ref does
+   not re-render, so the class arrived on the first move and then STAYED after
+   the drag ended — a grabbing cursor over a chart nobody is dragging, until
+   something else happened to re-render. */
+.ck-plot:active{cursor:grabbing}
+/* The price gutter, as a control. `touch-action:none` is the one place on this
+   chart where a vertical touch drag is taken from the page scroller — it is a
+   deliberate, narrow target with a resize cursor on it, and the plot body
+   deliberately does NOT do the same. */
+.ck-yaxis{position:absolute;top:0;right:0;bottom:0;cursor:ns-resize;touch-action:none;background:transparent}
+.ck-svg{display:block}
+.ck-grid{stroke:var(--line);stroke-width:1;shape-rendering:crispEdges}
+.ck-axis{font-family:var(--fm);font-size:10px;fill:var(--faint)}
+.ck-axis-dim{opacity:.75}
+/* ⚠️ NO text-anchor HERE. A CSS declaration beats an SVG presentation
+   attribute, so this rule silently overrode the per-label textAnchor the
+   renderer sets to keep the first and last stamps inside the plot — and the
+   left-most label shipped as "3:46" for 23:46, a WRONG time rather than a
+   clipped one. The anchor is the renderer's decision, per label. */
+.ck-axis-x{letter-spacing:.02em}
+/* One rule per direction, so a candle can never be drawn green with a red wick */
+.ck-c.up .ck-wick{stroke:var(--mint)}
+.ck-c.up .ck-body{fill:var(--mint)}
+.ck-c.dn .ck-wick{stroke:var(--red)}
+.ck-c.dn .ck-body{fill:var(--red)}
+.ck-wick{stroke-width:1;shape-rendering:crispEdges}
+.ck-vol{opacity:.3}
+.ck-vol.up{fill:var(--mint)}
+.ck-vol.dn{fill:var(--red)}
+.ck-lastline{stroke-dasharray:3 4;stroke-width:1;opacity:.65}
+.ck-lastline.up{stroke:var(--mint)}
+.ck-lastline.dn{stroke:var(--red)}
+.ck-lastbg.up{fill:var(--mint)}
+.ck-lastbg.dn{fill:var(--red)}
+.ck-lasttx{font-family:var(--fm);font-size:10px;font-weight:700;fill:#06121A}
+.ck-cross{stroke:var(--line2);stroke-width:1;stroke-dasharray:2 3}
+.ck-tip{position:absolute;top:8px;left:10px;right:10px;display:flex;gap:11px;flex-wrap:wrap;align-items:center;font-family:var(--fm);font-size:10.5px;color:var(--faint);pointer-events:none;background:rgba(9,12,18,.7);backdrop-filter:blur(7px);border:1px solid var(--line);border-radius:9px;padding:5px 9px}
+.ck-tip b{color:var(--text);font-weight:700}
+.ck-tip b.up{color:var(--mint)}
+.ck-tip b.dn{color:var(--red)}
+.ck-tip-t{color:var(--muted)}
+.ck-msg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:22px;text-align:center;color:var(--muted);font-size:13px}
+.ck-empty-k{font-family:var(--fd);font-weight:700;font-size:15px;color:var(--text)}
+.ck-empty-p{font-size:12.5px;color:var(--muted);max-width:400px;line-height:1.5}
+.ck-empty-a{font-family:var(--fm);font-size:11.5px;color:var(--accs,var(--cyan));margin-top:2px}
+.ck-empty-a:hover{text-decoration:underline}
+@media (max-width:640px){
+  .ck-head{padding:8px 9px}
+  .ck-tip{gap:8px;font-size:10px}
+  /* On a 360px-tall phone chart a two-line readout covers the candles it is
+     describing. Close and volume are what a phone reader is after; open, high
+     and low are the desk-sized detail. */
+  .ck-tip-ohl{display:none}
+}
+
 /* ============ GENERAL TIDY-UPS ============ */
 .content{margin:0 auto}
 .board{overflow-x:auto}
@@ -786,6 +941,10 @@ body{
 .trades-live.on{color:var(--mint)}
 .trades-live .dot-live{opacity:.4}
 .trades-live.on .dot-live{opacity:1}
+/* The two states that used to be filled with fabricated trades — see
+   components/TokenTrades. An honest empty panel beats a convincing full one. */
+.trades-none{padding:26px 16px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.5}
+.trades-stale{padding:7px 14px;font-family:var(--fm);font-size:10.5px;color:var(--amber);border-bottom:1px solid var(--line);background:rgba(231,199,122,.06)}
 .trades-scroll{max-height:420px;overflow-y:auto;overflow-x:auto;scrollbar-width:thin}
 .trades-row{display:grid;grid-template-columns:80px 84px 100px 118px 120px 1fr;gap:8px;align-items:center;padding:10px 16px;border-top:1px solid var(--line);font-family:var(--fm);font-size:12.5px;min-width:560px}
 .trades-hd{border-top:none;position:sticky;top:0;background:var(--card);font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);z-index:2}
@@ -823,6 +982,10 @@ body{
 .pkg-perks{list-style:none;display:flex;flex-direction:column;gap:6px;margin-bottom:14px;flex:1}
 .pkg-perks li{font-size:11.5px;color:var(--muted);display:flex;gap:6px}
 .pkg-perks li::before{content:"✓";color:var(--tc);font-weight:800}
+/* A perk the tier does NOT include. Same list, opposite mark — a buyer must be
+   able to see what is missing without reading a paragraph underneath. */
+.pkg-perks li.no{color:var(--faint);opacity:.8}
+.pkg-perks li.no::before{content:"×";color:var(--faint)}
 .pkg-cta{width:100%;justify-content:center;margin-top:auto}
 
 .ptable-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;margin-bottom:8px}
@@ -865,7 +1028,7 @@ body{
 @media(max-width:560px){.pkg-grid,.pkg-modal-grid,.banner-grid{grid-template-columns:1fr}}
 
 /* ── Brand logo containers (SVG mark brings its own visuals) ───────────── */
-.brand-logo{width:40px;height:40px;flex:none;line-height:0;filter:drop-shadow(0 8px 20px rgba(61,245,159,.28))}
+.brand-logo{width:40px;height:40px;flex:none;line-height:0;filter:drop-shadow(0 8px 20px rgba(61,220,151,.28))}
 .brand-logo.sm{width:32px;height:32px}
 
 /* ── Admin panel (dexvra.fun) ─────────────────────────────────────────── */
@@ -882,7 +1045,7 @@ body{
 .astat{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:rgba(255,255,255,.02)}
 .astat .k{font-family:var(--fm);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
 .astat .v{font-family:var(--fd);font-weight:700;font-size:26px;margin-top:6px}
-.astat.pend .v{color:var(--gold)}
+.astat.pend .v{color:var(--amber)}
 
 .asec{border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden}
 .asec-h{font-family:var(--fd);font-weight:700;font-size:15px;padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
@@ -905,10 +1068,14 @@ body{
 .a-chain{font-family:var(--fm);font-size:11px;color:var(--muted)}
 .a-ca{font-family:var(--fm);font-size:10.5px;color:var(--faint)}
 .a-status{font-family:var(--fm);font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-radius:6px;padding:2.5px 8px;border:1px solid currentColor}
-.a-status.approved{color:#3DDC97}.a-status.pending{color:var(--gold)}.a-status.rejected{color:var(--red)}
+.a-status.approved{color:#3DDC97}.a-status.pending{color:var(--amber)}.a-status.rejected{color:var(--red)}
 .a-input,.a-select{background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:8px;color:var(--text);font-family:var(--fb);font-size:12.5px;padding:7px 9px;width:100%}
 .a-select{cursor:pointer}
 .a-check{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.a-trend-hrs{display:flex;align-items:center;gap:5px;margin-top:6px}
+.a-hrs-in{width:52px;background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:7px;color:var(--text);font-family:var(--fm);font-size:11.5px;padding:5px 7px}
+.a-trend-hrs .abtn{padding:5px 9px;font-size:11px}
+.a-hrs-left{font-family:var(--fm);font-size:10px;color:var(--faint);white-space:nowrap}
 .a-row-actions{display:flex;gap:6px;justify-content:flex-end}
 .abtn{font-family:var(--fd);font-weight:600;font-size:11.5px;border-radius:8px;padding:6px 11px;cursor:pointer;border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--text);transition:all .12s}
 .abtn:hover{border-color:var(--line2);background:rgba(255,255,255,.07)}
@@ -1000,3 +1167,841 @@ body{
 .sf-val.bad{color:#F76A85;background:rgba(247,106,133,.12)}
 .sf-val.na{color:var(--faint);background:rgba(255,255,255,.03)}
 @media(max-width:560px){.scan-head{flex-direction:column;text-align:center;align-items:center}.scan-grid{grid-template-columns:1fr}.scan-meta{justify-content:center}}
+
+/* ── Token page · not yet listed ───────────────────────────────────────────
+   Every buy-bot alert links to a token page, the buy bot is free and runs on
+   any contract, so this state is not an edge case — for most visitors it IS
+   the token page. Centred column, same panel/ds/ca-box parts the listed page
+   uses, so it reads as the same product rather than an error screen. */
+.unlisted{display:flex;flex-direction:column;align-items:center;gap:14px;padding:34px 20px 30px;text-align:center}
+.unlisted-logo{width:72px;height:72px;border-radius:50%;object-fit:cover;border:1.5px solid var(--line2)}
+/* Amber, and a warning triangle rather than a "?" tile: a question mark reads
+   as "we could not load this", when the token is fine and only the listing is
+   missing. Same amber as the search badge, so the two states match. */
+.unlisted-mark{width:78px;height:78px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#F5B841;border:2px solid rgba(245,184,65,.45);background:rgba(245,184,65,.08)}
+.unlisted-h{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:2px 0 0}
+.unlisted-p{color:var(--muted);font-size:13.5px;line-height:1.6;max-width:46ch;margin:0}
+.unlisted-p strong{color:var(--text)}
+/* The live figures sit ABOVE the contract facts: a visitor who followed a buy
+   alert came for the number, not for a network name they already knew. */
+.unlisted-live{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;margin-top:2px}
+.unlisted-live .ds{min-width:132px}
+.unlisted-live .v{font-size:16px}
+.unlisted-facts{display:grid;gap:9px;width:100%;max-width:560px;text-align:left;margin-top:2px}
+.unlisted-facts .ca-box code{white-space:nowrap}
+.unlisted-cta{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+/* The chart on the unlisted page is ours, not an embed — see UnlistedToken */
+@media (max-width:640px){
+  .unlisted-h{font-size:21px}
+  .unlisted-cta{flex-direction:column;align-items:stretch;width:100%;max-width:340px}
+}
+
+/* ── Search · a pasted CA nobody has listed ────────────────────────────────
+   The buy bot is free and runs on any contract, so a pasted address is more
+   often an UNLISTED token than a listed one. The row reuses .sdd-item so it
+   reads as a result, not an error, and the badge is the only thing that says
+   otherwise. */
+.sdd-logo{width:30px;height:30px;border-radius:50%;object-fit:cover;flex:none;border:1px solid var(--line2)}
+.sdd-logo-ph{display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:10.5px;font-weight:800;color:var(--faint);background:rgba(255,255,255,.05)}
+.sdd-mc{font-size:10.5px;color:var(--muted);font-weight:700}
+/* Amber, not red: not-yet-listed is an invitation, not a failure. */
+.sdd-unlisted{flex:none;font-family:var(--fm);font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#F5B841;border:1px solid rgba(245,184,65,.42);background:rgba(245,184,65,.10);border-radius:999px;padding:5px 9px;white-space:nowrap}
+@media (max-width:520px){.sdd-unlisted{display:none}}
+
+/* ============ HOME MARKET AREA ============================================
+   Market Movers · the trending board · Top Coins, in that order, under ONE
+   chain filter.
+
+   These read as three different SURFACES on purpose. The board is the loud
+   one (medals, gradient pills, price flicker); the movers are three compact
+   scoreboards with their own accent rail; Top Coins is the calm ranking —
+   one row height, no flicker, everything in the mono voice. Three sections
+   in one card style is a page that says the same thing three times. */
+.sec-block{display:flex;flex-direction:column;gap:13px}
+/* The neutral section badge. `.flame` stays the trending board's alone — it is
+   the paid inventory and the only section that earns a hot gradient. */
+.sec-ic{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;flex:none;
+  background:linear-gradient(135deg,rgba(61,220,151,.2),rgba(34,211,238,.09));
+  border:1px solid rgba(61,220,151,.3);color:var(--mint)}
+.tc-ic{background:linear-gradient(135deg,rgba(169,124,255,.22),rgba(34,211,238,.1));border-color:rgba(169,124,255,.34);color:var(--violet)}
+
+/* ── the one chain filter ───────────────────────────────────────────────────
+   One row, scrolled sideways rather than wrapped into three. The count is the
+   point: it says whether a filter is worth tapping BEFORE it empties the
+   board, and a chain sitting at 1 explains a short board by itself. */
+.chain-row{display:flex;gap:7px;overflow-x:auto;padding:1px 0 3px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chain-row::-webkit-scrollbar{display:none}
+.chain-row .chain-chip svg{flex:none}
+.chain-n{font-family:var(--fm);font-size:9.5px;font-weight:800;color:var(--faint);
+  background:rgba(255,255,255,.06);border-radius:999px;padding:2px 6px;margin-left:1px}
+.chain-chip.active .chain-n{color:#03150B;background:var(--mint)}
+.chain-more{color:var(--faint);border-style:dashed}
+/* an empty chain is offered, dimmed — its 0 says before the tap why the board
+   will be empty, and hiding it entirely read as "only five chains supported" */
+.chain-zero{opacity:.55}
+.chain-zero:hover{opacity:.85}
+.chain-zero.active{opacity:1}
+
+/* ── Market Movers ─────────────────────────────────────────────────────────*/
+.movers{display:flex;flex-direction:column;gap:13px}
+.mv-stamp{font-family:var(--fm);font-size:10.5px;font-weight:700;color:var(--faint);white-space:nowrap}
+.mv-stamp b{color:var(--muted)}
+.mv-frames{margin-left:auto}
+.mv-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.mv-card{position:relative;display:flex;flex-direction:column;min-width:0;overflow:hidden;
+  border:1px solid var(--line2);border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.03),transparent 22%),var(--card);
+  box-shadow:0 16px 40px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.05)}
+/* The accent RAIL is the identity of each card — a green card, a red card and
+   a cyan card, told apart before a single number is read. */
+.mv-card::before{content:"";position:absolute;inset:0 0 auto;height:2.5px;background:var(--acc)}
+.acc-mint{--acc:linear-gradient(90deg,#3DF59F,#22D3EE);--accs:#3DF59F;--accbg:rgba(61,220,151,.14);--accbd:rgba(61,220,151,.34)}
+.acc-red{--acc:linear-gradient(90deg,#FF5C7A,#FF9D4D);--accs:#FF5C7A;--accbg:rgba(255,92,122,.14);--accbd:rgba(255,92,122,.34)}
+.acc-cyan{--acc:linear-gradient(90deg,#22D3EE,#A97CFF);--accs:#22D3EE;--accbg:rgba(34,211,238,.14);--accbd:rgba(34,211,238,.34)}
+.mv-head{display:flex;align-items:center;gap:9px;padding:13px 14px 10px;border-bottom:1px solid var(--line)}
+.mv-badge{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;flex:none;
+  color:var(--accs);background:var(--accbg);border:1px solid var(--accbd)}
+.mv-head h3{font-family:var(--fd);font-weight:700;font-size:14px;white-space:nowrap}
+.mv-all{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-family:var(--fm);
+  font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);
+  white-space:nowrap;transition:color .15s}
+.mv-all:hover{color:var(--accs)}
+/* ⚠️ THIS is the scroll. Ten rows behind a fixed-height card, so three cards
+   fit one screen and the trending board under them stays reachable. A card
+   that grows to its content pushes the inventory this site sells off the
+   fold. */
+.mv-list{display:flex;flex-direction:column;padding:5px;gap:1px;
+  height:274px;overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent}
+.mv-list::-webkit-scrollbar{width:6px}
+.mv-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.mv-list::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26)}
+.mv-row{display:grid;grid-template-columns:16px 28px minmax(0,1fr) auto auto;align-items:center;gap:9px;
+  padding:7px 9px;border-radius:11px;text-align:left;width:100%;transition:background .12s}
+.mv-row:hover{background:rgba(255,255,255,.05)}
+.mv-rank{font-family:var(--fm);font-size:10.5px;font-weight:800;color:var(--faint);text-align:center}
+/* the card is compact — the chain badge on a 28px coin is a smudge */
+.mv-row .cbadge{display:none}
+.mv-row .coin{border-width:1.5px}
+.mv-id{min-width:0;display:flex;flex-direction:column;gap:1px}
+.mv-sym{font-family:var(--fm);font-weight:800;font-size:12px;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mv-nm{font-size:10.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spark{flex:none;opacity:.85}
+.spark-none{display:block;width:34px}
+.mv-age{font-family:var(--fm);font-size:10px;font-weight:800;color:var(--cyan);white-space:nowrap}
+/* A TINTED pill, deliberately not the board's saturated .chg gradient — two
+   surfaces on one page reading in one voice is what made them duplicates. */
+.mv-pct{font-family:var(--fm);font-size:11px;font-weight:800;border-radius:8px;padding:4px 7px;white-space:nowrap;min-width:64px;text-align:right}
+.mv-pct.up{color:var(--mint);background:rgba(61,220,151,.11)}
+.mv-pct.dn{color:var(--red);background:rgba(255,92,122,.11)}
+.mv-empty{margin:auto;padding:20px 14px;text-align:center;font-size:12px;color:var(--faint);line-height:1.55}
+/* "no reading yet" — a dash, never a fabricated 0.0%. Muted on purpose: the
+   absence of a number is the information. */
+.mv-pct.none,.chg.none{color:var(--faint);background:rgba(255,255,255,.04);font-weight:700}
+
+/* ── the trending board's footer ───────────────────────────────────────────
+   A cut list says it is cut. Ten rows with nothing under them reads as "that
+   is everything Dexvra has", which is the opposite of what the page sells. */
+.board-foot{display:flex;align-items:center;gap:12px;padding:11px 20px;border-top:1px solid var(--line);
+  background:rgba(255,255,255,.02);font-family:var(--fm);font-size:10.5px;font-weight:700;color:var(--faint)}
+.board-all{margin-left:auto;display:inline-flex;align-items:center;gap:5px;color:var(--mint);
+  letter-spacing:.06em;text-transform:uppercase;font-size:10px;transition:gap .15s}
+.board-all:hover{gap:8px}
+
+/* The expander is the board's last ROW, full width — that is where the eye
+   already is after ten of them, and a link in a corner is a control people
+   scroll past. The chevron turns rather than swapping glyph, so the collapsed
+   and open states read as one control in two positions. */
+.board-expand{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;
+  padding:13px 20px;border-top:1px solid var(--line);background:rgba(255,255,255,.02);
+  font-family:var(--fm);font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mint);transition:background .15s,color .15s}
+.board-expand:hover{background:rgba(61,220,151,.07)}
+.board-expand svg{transition:transform .25s}
+.board-expand.open svg{transform:rotate(180deg)}
+/* …and when it sits above the "showing N of M" line, the two must not read as
+   two separate strips. */
+.board-expand+.board-foot{border-top:none}
+
+/* ── Top Coins ─────────────────────────────────────────────────────────────*/
+.topcoins{display:flex;flex-direction:column;gap:11px}
+.tc-board{border:1px solid var(--line2);border-radius:18px;overflow:hidden;overflow-x:auto;
+  background:linear-gradient(180deg,rgba(255,255,255,.02),transparent 14%),var(--card);box-shadow:0 14px 36px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05)}
+.tc-board::-webkit-scrollbar{height:7px}
+.tc-board::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13);border-radius:99px}
+.tc-row{display:grid;grid-template-columns:44px minmax(170px,1.6fr) 108px 84px 84px 118px 62px;
+  align-items:center;gap:8px;padding:10px 18px;border-top:1px solid var(--line);transition:background .12s}
+.tc-row.tc-head{border-top:none;padding:10px 18px;background:rgba(255,255,255,.03);
+  font-family:var(--fm);font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.tc-row:not(.tc-head){cursor:pointer}
+.tc-row:not(.tc-head):hover{background:rgba(169,124,255,.06);box-shadow:inset 3px 0 0 var(--violet)}
+.tc-rank{font-family:var(--fm);font-weight:800;font-size:12px;color:var(--faint)}
+.tc-tok{display:flex;align-items:center;gap:10px;min-width:0}
+.tc-id{min-width:0}
+.tc-sym{font-family:var(--fd);font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:6px;min-width:0}
+.tc-sym-txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:14ch;flex:0 1 auto}
+.tc-sym .tier-chip{flex:0 0 auto}
+.tc-nm{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-px{font-family:var(--fm);font-weight:800;font-size:12.5px}
+/* Plain coloured text, not a pill: this is the calm surface and a wall of
+   filled pills is what the board above it already does. */
+.tc-chg{font-family:var(--fm);font-weight:800;font-size:12px}
+.tc-chg.up{color:var(--mint)}
+.tc-chg.dn{color:var(--red)}
+.tc-mono{font-family:var(--fm);font-weight:600;font-size:12px;color:var(--muted)}
+.tc-dxs{display:flex;justify-content:flex-end}
+.tc-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:0 4px;
+  font-family:var(--fm);font-size:10.5px;font-weight:700;color:var(--faint)}
+.tc-foot b{color:var(--orange)}
+.tc-more{margin-left:auto;font-family:var(--fm);font-size:10px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--violet);border:1px solid rgba(169,124,255,.4);
+  border-radius:999px;padding:6px 13px;transition:all .15s}
+.tc-more:hover{background:rgba(169,124,255,.12)}
+
+/* Narrow: the three cards become a swipeable rail rather than stacking into
+   three full-height blocks — .pulse-strip's grammar, same page, same gesture. */
+@media (max-width:1120px){
+  .mv-grid{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:4px;
+    scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.15) transparent}
+  .mv-grid::-webkit-scrollbar{height:6px}
+  .mv-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13);border-radius:99px}
+  .mv-card{flex:0 0 min(340px,86%);scroll-snap-align:start}
+  .mv-frames{margin-left:0}
+}
+/* Narrow Top Coins no longer HIDES columns — the phone block below scrolls
+   the full set sideways instead ("harus bisa di scroll ke kanan"). */
+
+/* ============ PREMIUM PASS · skeletons + micro-interaction ================
+   Loading must LOOK like loading. Before the first /api/tokens answer, the
+   empty states are FALSE claims — "Nothing is up on this timeframe" about a
+   market nobody has read yet — which is this repo's failure-rendered-as-fact
+   shape, on the storefront. The shimmer replaces the claim, and the rows fade
+   down the list so the block reads as "arriving", not "broken". */
+.sk{position:relative;overflow:hidden;border-radius:7px;background:rgba(255,255,255,.055);flex:none}
+.sk::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(100deg,transparent 32%,rgba(255,255,255,.075) 50%,transparent 68%)}
+/* ⚠️ The animations are DECLARED under no-preference rather than killed by the
+   reduced-motion block: this section is appended after that block, so a
+   same-specificity kill there loses the cascade to these very rules — measured
+   with reducedMotion:"reduce", not assumed. */
+@media (prefers-reduced-motion:no-preference){
+  .sk::after{animation:skshimmer 1.6s linear infinite}
+}
+@keyframes skshimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.skr{display:flex;align-items:center;gap:12px;padding:14px 20px;border-top:1px solid var(--line)}
+.skr:first-child{border-top:none}
+.sk-dot{width:14px;height:14px;border-radius:50%}
+.sk-coin{width:38px;height:38px;border-radius:50%}
+.sk-coin.sm{width:28px;height:28px}
+.sk-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.sk-line{height:11px}
+.sk-line.thin{height:8px;opacity:.7}
+.sk-cell{width:96px;height:12px;margin-left:auto}
+.sk-pill{width:66px;height:24px;border-radius:9px}
+.mv-skr{padding:9px}
+.mv-skr .sk-spark{width:34px;height:14px}
+.mv-skr .sk-pill{height:22px}
+
+/* Press feedback: a control that gives a millimetre under the finger. Buttons
+   only — a table row that shrinks on click reads as the page slipping. */
+.ttab:active,.tab:active,.chain-chip:active,.qtag:active,.tc-more:active,
+.board-expand:active,.btn-primary:active,.btn-wallet:active,.filter-btn:active,
+.mv-all:active{transform:scale(.97)}
+
+/* LIVE breathes — one slow exhale, not a blink. It is the only animated chrome
+   on the page, which is what keeps it meaning something. */
+@media (prefers-reduced-motion:no-preference){
+  .live-pill{animation:pillbreathe 2.6s ease-in-out infinite}
+}
+@keyframes pillbreathe{50%{box-shadow:0 0 14px 1px rgba(61,220,151,.4)}}
+
+/* the expander's chevron leans into the tap it invites */
+.board-expand:hover svg{transform:translateY(2px)}
+.board-expand.open:hover svg{transform:rotate(180deg) translateY(2px)}
+
+/* ============================================================
+   DEXVRA REFINED — the clean / elegant / premium pass
+   (operator: "design ulang semuanya yang clean elegan premium")
+
+   The last layer, and the QUIETING one. The page's problem was never
+   darkness — it was noise: 800-weight tracked-out mono uppercase on every
+   label, gradient-filled pills, glowing shadows, emoji clip-art orbiting the
+   hero. Premium is what remains when the chrome stops competing with the
+   numbers. Nothing here touches layout or behaviour — every selector the
+   tests pin keeps its shape.
+   ============================================================ */
+
+/* ── type: the mono is for FIGURES, weight comes down everywhere ─────────── */
+body{font-size:14px;letter-spacing:.001em}
+h1,h2,h3,h4{font-weight:600;letter-spacing:-.02em}
+.sec-title h2{font-size:20px}
+.page-head h2{font-size:21px}
+.brand-name{font-weight:600;font-size:19px}
+.brand-sub{letter-spacing:.2em;font-weight:600;opacity:.7}
+/* labels stop shouting: lighter weight, half the tracking, softer color */
+.nav-label,.tmg-label{font-weight:600;letter-spacing:.14em;font-size:8.5px}
+.row.head,.tc-row.tc-head{font-weight:600;letter-spacing:.1em;color:var(--faint)}
+.mv-all,.wcard-head .more,.board-expand,.board-all{font-weight:600;letter-spacing:.1em}
+.s-eyebrow{font-weight:600;letter-spacing:.16em;font-size:9px}
+.mv-stamp,.tc-foot,.board-foot{font-weight:500}
+.price,.tc-px{font-weight:600}
+.mv-sym{font-weight:600}
+.rank,.tc-rank,.mv-rank{font-weight:600}
+.tx-main{font-weight:600}
+.chg,.mv-pct,.tc-chg{font-weight:600}
+.dscore{font-weight:600}
+.tick-item .sym,.tick-item .pct,.tick-item .rnk{font-weight:600}
+.heat-temp{font-weight:600}
+.fg-num{font-weight:600}
+.top-stat{font-weight:600}
+
+/* ── geometry: one radius scale, hairline borders, one soft shadow ───────── */
+.board{border-radius:16px}
+.tc-board,.mv-card,.wcard,.panel{border-radius:14px}
+.sec-ic,.flame,.page-ic,.wcard-head .ic{border-radius:10px}
+.board,.tc-board,.mv-card,.wcard,.panel{
+  border-color:rgba(255,255,255,.07);
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 16px 40px rgba(0,0,0,.35);
+}
+.row:not(.head):hover{background:rgba(255,255,255,.03)}
+
+/* ── the section badges join the system: neutral chip, tinted glyph.
+      The flame's hot orange gradient was the loudest object on the page —
+      Trending keeps its ember as a COLOR, not a firework. ─────────────────── */
+.flame{background:rgba(255,157,77,.1);border:1px solid rgba(255,157,77,.22);box-shadow:none;color:var(--orange)}
+.sec-ic{background:rgba(61,220,151,.08);border-color:rgba(61,220,151,.2)}
+.tc-ic{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:var(--muted)}
+.wcard-head .ic{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--muted)}
+.page-ic{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}
+
+/* ── data pills: TINTED, never gradient-filled. A column of saturated
+      gradient chips is a slot machine; tinted text is an instrument. The
+      board, the movers and Top Coins now speak in ONE voice. ──────────────── */
+.chg{padding:5px 9px;border-radius:8px}
+.chg.up{color:#4ADE9C;background:rgba(61,220,151,.12)}
+.chg.dn{color:#FF8199;background:rgba(247,106,133,.12)}
+.mv-pct.up{color:#4ADE9C;background:rgba(61,220,151,.1)}
+.mv-pct.dn{color:#FF8199;background:rgba(247,106,133,.1)}
+.src-pill.live,.live-pill{color:#04240F;background:var(--mint)}
+.age-chip{color:var(--muted);border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.04)}
+
+/* ── controls: quiet at rest, decisive on focus ──────────────────────────── */
+.ttabs{background:rgba(255,255,255,.025);border-color:rgba(255,255,255,.07);border-radius:10px}
+.ttab{font-weight:600;border-radius:7px}
+.ttab.active{background:rgba(255,255,255,.09);color:#FFFFFF}
+.chain-chip,.tab,.qtag{font-weight:600;border-width:1px;background:rgba(255,255,255,.02)}
+.chain-chip.active{background:rgba(61,220,151,.1);border-color:rgba(61,220,151,.4);color:#EAFBF3}
+.chain-chip.active .chain-n{background:var(--mint)}
+.filter-btn{border-width:1px;font-weight:600}
+.search{border-color:rgba(255,255,255,.09)}
+.search:focus-within{border-color:rgba(61,220,151,.45);box-shadow:0 0 0 3px rgba(61,220,151,.08)}
+.btn-wallet{border-width:1px}
+.fasttrack,.btn-primary{border-radius:12px}
+.fasttrack{box-shadow:0 8px 20px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.8)!important}
+.fasttrack:hover{box-shadow:0 12px 26px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.85)!important}
+.nav a{font-weight:500}
+.nav a.active{background:rgba(255,255,255,.05);color:#FFFFFF}
+.nav a.active::before{box-shadow:none}
+.badge-hot{background:rgba(255,157,77,.14);color:var(--orange)}
+.badge-new{background:rgba(61,220,151,.12);color:var(--mint)}
+
+/* the diamond line-art — the brand mark as geometry, not a sticker.
+   Positioned by whichever surface renders it (the hero spot panel now). */
+.hero-mark{position:absolute;pointer-events:none}
+.hero-mark path{stroke:rgba(61,220,151,.5);stroke-width:1.1;fill:none}
+.hero-mark .dim{stroke:rgba(255,255,255,.12)}
+
+/* ── the pulse strip joins the calm ──────────────────────────────────────── */
+.heat-cell{border-radius:10px}
+.heat-temp{color:var(--text)}
+.heat-temp .deg{color:var(--mint);opacity:1}
+.heat-bar i{background:var(--mint)}
+.wire-item b{font-weight:600}
+
+/* ============================================================
+   REFINED II — the BOLD half of the redesign
+   ("apa yang anda rubah saya tidak melihat apapun" — fair. The first pass
+   polished; this one changes what the eye lands on. Three moves:)
+
+   1. THE GROUND GOES QUIET — no colored glows behind the page; near-black
+      with grain only. Color now belongs to DATA alone.
+   2. THE HERO GOES EDITORIAL — display type at poster scale over a clean
+      field; the headline IS the artwork.
+   3. THE TABLES FLOAT — the board and Top Coins lose their card boxes and
+      sit directly on the page, rows separated by hairlines: the terminal
+      look, which is what a market page is. The mover CARDS stay cards —
+      the contrast is the hierarchy.
+   ============================================================ */
+
+/* 1 ── the quiet ground */
+body{
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.028'/%3E%3C/svg%3E"),
+    radial-gradient(1100px 480px at 50% -30%, rgba(255,255,255,.035), transparent 60%),
+    #070809;
+}
+
+/* 2 ── the editorial voice */
+.s-eyebrow{margin-bottom:14px;color:var(--mint)}
+
+/* 3 ── the floating tables. A dark card on a dark page holding a dark table
+      was three nested boxes saying nothing; the rows ARE the surface now. */
+.board,.tc-board{background:transparent;border:none;box-shadow:none;border-radius:0}
+.row.head,.tc-row.tc-head{background:transparent;border-top:none;
+  border-bottom:1px solid rgba(255,255,255,.08);padding-top:6px;padding-bottom:12px}
+.row,.tc-row{border-top:none;border-bottom:1px solid rgba(255,255,255,.045);padding-top:15px;padding-bottom:15px}
+.row:not(.head):hover{background:linear-gradient(90deg,rgba(61,220,151,.05),transparent 70%);box-shadow:none}
+.tc-row:not(.tc-head):hover{background:linear-gradient(90deg,rgba(255,255,255,.04),transparent 70%);box-shadow:none}
+.board-expand{border-top:none;background:transparent;padding-top:16px}
+.board-expand:hover{background:transparent;color:#7FE9BC}
+.board-expand+.board-foot,.board-foot{border-top:none;background:transparent;padding-left:0;padding-right:0}
+.tc-foot{padding:8px 0 0}
+.skr{border-top:none;border-bottom:1px solid rgba(255,255,255,.045)}
+
+/* section headers carry the editorial rhythm: more air above, title larger */
+.sec-block{margin-top:14px}
+.sec-title h2{font-size:22px}
+.movers{margin-top:14px}
+
+/* the pulse cards lighten to match the floating page */
+.wcard,.mv-card{background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 30%),#0B0C0E}
+
+/* ============================================================
+   DEXVRA PRIVÉ — the new identity
+   ("saya ingin semua tampilan design berbeda dengan sebelumnya")
+
+   Not another refinement of the old face — a DIFFERENT one. The three
+   signatures of the previous identity were the left sidebar, the mint-on-
+   black palette, and the geometric mono voice. All three are replaced:
+
+     structure   top navigation, one centred column
+     palette     deep graphite-NAVY ground, CHAMPAGNE GOLD chrome —
+                 green and red now belong to market data ALONE
+     type        Archivo display, an Instrument Serif italic accent
+                 (the editorial flourish), Inter body, mono for figures
+
+   The mint survives in exactly two places: the logo mark and the LIVE
+   semantics — brand and truth, not decoration.
+   ============================================================ */
+:root{
+  --acc:#26C6F5; --acc-deep:#0E9BD8;
+  --fd:'Archivo','Sora',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  --fs:var(--fd);  /* serif retired with the Privé direction */
+}
+
+/* ── structure: one column, the header is the navigation ─────────────────── */
+.app{grid-template-columns:1fr}
+.sidebar{display:none}
+.content{margin:0 auto}
+.brand-top{display:flex}
+.topmenu{display:block}
+.topbar{padding:13px 26px;gap:16px;background:rgba(10,13,20,.88)}
+.topbar::after{background:linear-gradient(90deg,transparent 4%,rgba(38,198,245,.35) 50%,transparent 96%)}
+.topnav{display:flex;flex-direction:row;align-items:center;gap:2px;flex:none}
+.topnav a{display:flex;align-items:center;padding:8px 13px;border-radius:9px;
+  color:var(--muted);font-weight:500;font-size:13.5px;letter-spacing:.01em;transition:color .15s,background .15s}
+.topnav a:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.topnav a.active{color:var(--acc);background:rgba(38,198,245,.08)}
+.topnav a.active::before{content:none}
+.search{max-width:420px}
+@media (max-width:1180px){.topnav a{padding:8px 9px;font-size:13px}}
+@media (max-width:980px){.topnav{display:none}}
+
+/* ── palette: navy ground, gold chrome ───────────────────────────────────── */
+body{
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"),
+    radial-gradient(1100px 500px at 50% -28%, rgba(60,170,240,.05), transparent 60%),
+    linear-gradient(180deg,#0B0E15 0%,#090B10 40%,#07080C 100%);
+}
+.wcard,.mv-card{background:linear-gradient(180deg,rgba(130,185,255,.03),transparent 30%),#0C1017;
+  border-color:rgba(190,215,255,.08)}
+.row.head,.tc-row.tc-head{border-bottom-color:rgba(190,215,255,.09)}
+.row,.tc-row,.skr{border-bottom-color:rgba(190,215,255,.05)}
+
+/* the chrome accents move to gold — data colors are untouched */
+.hero-mark path{stroke:rgba(38,198,245,.55)}
+.s-eyebrow{color:var(--acc)}
+.chain-chip.active{background:rgba(38,198,245,.09);border-color:rgba(38,198,245,.4);color:#E3F7FF}
+.chain-chip.active .chain-n{background:var(--acc);color:#03222E}
+.ttab.active{background:rgba(38,198,245,.12);color:#E3F7FF}
+.search:focus-within{border-color:rgba(38,198,245,.45);box-shadow:0 0 0 3px rgba(38,198,245,.08)}
+.board-expand{color:var(--acc)}
+.board-expand:hover{color:#8FE4FF}
+.board-all,.mv-all:hover,.wcard-head .more{color:var(--acc)}
+.tc-more{color:var(--acc);border-color:rgba(38,198,245,.4)}
+.tc-more:hover{background:rgba(38,198,245,.1)}
+.tc-row:not(.tc-head):hover{background:linear-gradient(90deg,rgba(38,198,245,.05),transparent 70%)}
+.row:not(.head):hover{background:linear-gradient(90deg,rgba(38,198,245,.05),transparent 70%)}
+.sec-ic{background:rgba(38,198,245,.08);border-color:rgba(38,198,245,.22);color:var(--acc)}
+.flame{background:rgba(38,198,245,.1);border-color:rgba(38,198,245,.25);color:var(--acc)}
+.badge-hot{background:rgba(38,198,245,.14);color:var(--acc)}
+.star:hover,.star.on{color:var(--acc)}
+.star.on svg{fill:var(--acc)}
+.nav .ldot{background:var(--acc);box-shadow:0 0 8px rgba(38,198,245,.6)}
+::selection{background:rgba(38,198,245,.3)}
+:focus-visible{outline-color:var(--acc)}
+
+/* the primary actions wear the gold */
+.btn-primary,.fasttrack{
+  background:linear-gradient(180deg,#8FE4FF 0%,#26C6F5 45%,#0E9BD8 100%)!important;
+  color:#FFFFFF!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,248,230,.8)!important;
+}
+.btn-primary:hover,.fasttrack:hover{
+  box-shadow:0 12px 28px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,248,230,.9)!important;
+}
+
+/* ── type: the serif italic is the signature ─────────────────────────────── */
+/* the accent word: Moontok's two-tone wordmark grammar (Moon·Profile) —
+   same face, same weight, the ACCENT carries it. No serif, no italic. */
+.hero-serif{font-family:var(--fd);font-style:normal;font-weight:inherit;color:var(--acc);
+  font-size:1em;letter-spacing:inherit}
+.sec-title h2,.page-head h2,.brand-name,.mv-head h3,.wcard-head h3{font-family:var(--fd)}
+
+/* LIVE stays mint — it is a truth light, not chrome */
+.live-pill,.src-pill.live{background:var(--mint);color:#04240F}
+
+/* ============================================================
+   MOONTOK ARRANGEMENT — the home opens on the instruments
+   ("saya ingin buat seperti moontok", said with the screenshot)
+
+   The command-deck hero and the sticky side rail are RETIRED — that was
+   the editorial direction the operator rejected. The reference's shape:
+   intel cards across the top (Pulse · Fear & Greed · Signals — the
+   Moon-Satellite row), the banner placements under them, then straight
+   into the trending board behind its chain pills. Layout lives in
+   page.tsx; the DEXVRA BLUE skin at the end of this file wears the brand. What survives of the old structure layer is only
+   what was a straight bug fix: the phone row anatomy below.
+   ============================================================ */
+
+/* ── phones: the tables scroll SIDEWAYS with every column aboard ───────────
+   ("top coin dan trending harus bisa di scroll ke kanan"). The first cut
+   stacked price over change and HID the other columns; the operator wants
+   the reference's pattern instead: the FULL column set, swiped
+   horizontally, with the rank and the token identity STICKY on the left so
+   the numbers always say which row they belong to. Hiding was the old
+   strategy, so this block first puts every hidden column back. */
+@media (max-width:600px){
+  .board{overflow-x:auto;scrollbar-width:thin}
+  /* every column the wider breakpoints hid comes back aboard */
+  .board .row>.c-mcap,.board .row>.c-liq,.board .row>.c-vol,.board .row>.c-txns{display:block}
+  .board .row>.c-info{display:flex;justify-content:flex-end;align-items:center;gap:6px}
+  .board .row.head>.c-mcap,.board .row.head>.c-liq,.board .row.head>.c-vol,
+  .board .row.head>.c-txns,.board .row.head>.c-info{display:block}
+  .board .row.head>.sortable{display:flex}
+  /* …so the identity line no longer needs its condensed stats */
+  .board .tok .m-stats{display:none}
+  .board .row>.tok .ts{min-width:0;overflow:hidden}
+  /* one line again, FIXED tracks — the width comes from the tracks and the
+     board scrolls; min-width keeps a short board spanning its panel.
+     ⚠️ The SCORE track must fit BOTH its chips (DXS + 🛡 tax, ~106px
+     measured): the cell is justify-content:flex-end, so a track narrower
+     than its content overflows LEFT — the DXS chip was drawn over the
+     tail of the right-aligned Txns numbers ("perbaiki tampilan dx
+     scorenya"). */
+  .board:not(.np) .row{grid-template-columns:26px 168px 92px 78px 88px 88px 90px 104px 120px 34px;
+    gap:6px;padding:11px 12px;width:max-content;min-width:100%}
+  .board.np .row{grid-template-columns:26px 168px 72px 92px 78px 88px 102px 34px;
+    gap:6px;padding:11px 12px;width:max-content;min-width:100%}
+  /* the rank and the token stay put while the numbers slide beneath them;
+     the sticky insets match the row padding so nothing jumps at scroll 0.
+     The cells STRETCH to the full row track: the rows centre their cells, so
+     a plain-text rank is shorter than the change pill sliding under it and
+     the pill peeked through above and below the rank's solid ground. */
+  .board .row>.rank,.board .row>.tok,.board .row.head>:first-child,.board .row.head>:nth-child(2),
+  .tc-row>.tc-rank,.tc-row>.tc-tok,.tc-row.tc-head>:first-child,.tc-row.tc-head>:nth-child(2){
+    align-self:stretch;display:flex;align-items:center}
+  .board .row>.rank,.board .row.head>:first-child{position:sticky;left:12px;z-index:2;background:#0C1017;
+    box-shadow:-12px 0 0 0 #0C1017}
+  .board .row>.tok,.board .row.head>:nth-child(2){position:sticky;left:44px;z-index:2;background:#0C1017;
+    box-shadow:-8px 0 0 0 #0C1017, 10px 0 14px -10px rgba(0,0,0,.7);padding-right:6px}
+  .board .row.head>:first-child,.board .row.head>:nth-child(2){background:#11151C}
+  .board .row.head>:first-child{box-shadow:-12px 0 0 0 #11151C}
+  .board .row.head>:nth-child(2){box-shadow:-8px 0 0 0 #11151C, 10px 0 14px -10px rgba(0,0,0,.7)}
+  /* the expander, footer and empty state stay pinned while the table scrolls */
+  .board-expand,.board-foot,.board .empty{position:sticky;left:0}
+  /* the section head tidies: title · LIVE · Filter on one line, the
+     timeframes on their own row beneath */
+  .sec-head{row-gap:10px}
+  .sec-head .filter-btn{order:4;margin-left:auto}
+  .sec-head .ttabs{order:9}
+  /* Top Coins: the same contract — full seven columns, identity sticky */
+  .tc-row{grid-template-columns:30px 168px 96px 76px 80px 104px 60px;gap:6px;
+    padding:10px 12px;width:max-content;min-width:100%}
+  .tc-row>.tc-rank,.tc-row.tc-head>:first-child{position:sticky;left:12px;z-index:2;background:#0C1017;
+    box-shadow:-12px 0 0 0 #0C1017}
+  .tc-row>.tc-tok,.tc-row.tc-head>:nth-child(2){position:sticky;left:48px;z-index:2;background:#0C1017;
+    box-shadow:-8px 0 0 0 #0C1017, 10px 0 14px -10px rgba(0,0,0,.7);padding-right:6px}
+  .tc-row.tc-head>:first-child,.tc-row.tc-head>:nth-child(2){background:#11151C}
+  .tc-row.tc-head>:first-child{box-shadow:-12px 0 0 0 #11151C}
+  .tc-row.tc-head>:nth-child(2){box-shadow:-8px 0 0 0 #11151C, 10px 0 14px -10px rgba(0,0,0,.7)}
+  .tc-foot{position:sticky;left:0}
+  .mv-list{height:250px}
+  .mv-stamp{display:none}
+}
+
+/* ============================================================
+   PRIVÉ EVERYWHERE — every page joins the rebuild
+   ("maksud saya SEMUA tampilan dirubah")
+
+   The home got the new grammar and the inner pages were still wearing
+   the old one — emoji chips in mint boxes, walls of pills, glowing card
+   boxes, mint chrome on every control. One grammar on every page now:
+
+     masthead   the title's last word in the serif italic over a
+                hairline (PageHead.tsx), controls on the right —
+                the emoji chip is gone from every page at once
+     controls   hairline tab indexes, never pill walls; focus and
+                hover chrome is gold, green/red stay data-only
+     surfaces   hairline floats — panels carry one gold keyline on
+                their top edge as the family mark
+   ============================================================ */
+
+/* ── the masthead ── */
+.page-head{align-items:flex-end;gap:14px;border-bottom:1px solid rgba(190,215,255,.09);padding-bottom:14px}
+.ph-main{display:flex;flex-direction:column;gap:6px;margin-right:auto;min-width:0}
+.page-head h2{font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1.05}
+.page-sub{width:auto;margin-top:0}
+.page-ic{display:none}
+.back-link:hover{color:var(--acc)}
+
+/* ── controls: quick-tags and focus rings join the accent ── */
+.qtag:hover{color:var(--acc);border-color:rgba(38,198,245,.45)}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:rgba(38,198,245,.5);box-shadow:0 0 0 3px rgba(38,198,245,.1)}
+
+/* ── surfaces: hairline floats, one gold keyline on the top edge ── */
+.panel{background:linear-gradient(180deg,rgba(130,185,255,.03),transparent 30%),#0C1017;
+  border:1px solid rgba(190,215,255,.08);border-top-color:rgba(38,198,245,.3);
+  border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.35)}
+.modal{background:linear-gradient(180deg,rgba(130,185,255,.04),transparent 24%),#0C1017;
+  border-color:rgba(190,215,255,.1);border-top-color:rgba(38,198,245,.35);border-radius:18px}
+.listing-card,.signal-row,.alert-item,.mini-listing,.soc-card,.pkg,.guide,.ds,.tier{
+  background:rgba(190,215,255,.025);border-color:rgba(190,215,255,.09);box-shadow:none}
+.listing-card:hover,.soc-card:hover,.guide:hover{border-color:rgba(38,198,245,.4);background:rgba(38,198,245,.04)}
+.soc-card:hover .soc-ic,.soc-card:hover .soc-go{color:var(--acc)}
+.soc-card.primary{border-color:rgba(38,198,245,.3)}
+.guide .gi{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);color:var(--muted)}
+.tp-chart-wrap{border-color:rgba(190,215,255,.09);border-top-color:rgba(38,198,245,.3);border-radius:14px;box-shadow:none}
+.big-empty .em{filter:grayscale(.6);opacity:.85}
+
+/* ── the token page's stats become a hairline ledger, the CA a dashed frame ── */
+.tp-stats .ds{background:transparent;border:none;border-bottom:1px solid rgba(190,215,255,.08);border-radius:0;padding:10px 2px}
+.ca-box{background:transparent;border:1px dashed rgba(190,215,255,.16);border-radius:10px}
+.copy-btn{color:var(--acc);border-color:rgba(38,198,245,.4)}
+.copy-btn:hover{background:rgba(38,198,245,.12)}
+
+/* ── the ticker joins the index: serif gold ranks, hairline frame ── */
+.ticker{background:transparent;border-bottom-color:rgba(190,215,255,.08)}
+.tick-item .rnk{color:rgba(38,198,245,.8);font-weight:700}
+
+/* ── trending's featured rail reads as exhibits, its head as a microlabel ── */
+.feat-head{font-family:var(--fm);font-size:10.5px;font-weight:600;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--acc)}
+.feat-sub{border-color:rgba(190,215,255,.12);color:var(--faint)}
+.feat-card{background:rgba(190,215,255,.02);border-color:rgba(190,215,255,.09);border-left:3px solid var(--tc);border-radius:12px}
+
+/* ── the listing flow drops its mint chrome; the money numbers go gold ── */
+.tier.sel{border-color:rgba(38,198,245,.55);background:rgba(38,198,245,.06);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.tier .tprice{color:var(--acc)}
+.tier li::before{color:var(--acc)}
+.pkg-price,.pt-price{color:var(--acc)}
+/* the ribbon chips (TOP TIER · BEST SELLER · START HERE) are OUR chrome, not
+   tier data — they wear the gold; INSTANT keeps the Xpress cyan it names */
+.pkg-flag{background:var(--acc);color:#03222E}
+.soc-tag{background:rgba(38,198,245,.14);color:var(--acc);border:1px solid rgba(38,198,245,.3)}
+
+/* ============================================================
+   MOONTOK ARRANGEMENT · DEXVRA BLUE — the reference's shape, the brand's color
+   ("saya ingin buat seperti moontok", then "warnanya brandnya ya dexvra biru")
+
+   Black ground with a blue ambience, the Dexvra diamond's cyan-blue as
+   the one chrome accent — pills, CTAs, heat bars, ticker ranks.
+   Green/red stay the market's colors and LIVE stays mint — data and
+   truth lights are never chrome. Not a pixel clone: Dexvra's own data
+   surfaces (DXS score, movers, top coins) keep their seats.
+   ============================================================ */
+
+/* the ground: near-black with the brand-blue glow up top */
+body{
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"),
+    radial-gradient(1200px 540px at 50% -30%, rgba(40,170,240,.12), transparent 62%),
+    radial-gradient(900px 420px at 92% -10%, rgba(20,120,200,.08), transparent 60%),
+    linear-gradient(180deg,#070B12 0%,#060A0F 45%,#05080B 100%);
+}
+.topbar{background:rgba(8,14,20,.9)}
+
+/* CTAs: dark ink on the brand-blue gradient — the reference's button shape */
+.btn-primary,.fasttrack{
+  background:linear-gradient(180deg,#4FD4FF 0%,#1FAEE8 55%,#0B84C2 100%)!important;
+  color:#03222E!important;
+  box-shadow:0 8px 26px rgba(14,155,216,.4), inset 0 1px 0 rgba(255,255,255,.35)!important;
+}
+.btn-primary:hover,.fasttrack:hover{
+  box-shadow:0 12px 32px rgba(14,155,216,.55), inset 0 1px 0 rgba(255,255,255,.45)!important;
+}
+
+/* active pills fill brand blue — every chip species, one voice */
+.chain-chip.active{background:rgba(38,198,245,.16);border-color:rgba(38,198,245,.55);color:#F1EAFF}
+.chain-chip.active .chain-n{background:var(--acc);color:#03222E}
+.tab.active{background:rgba(38,198,245,.16);border-color:rgba(38,198,245,.55);color:#F1EAFF}
+.chip-chain.on{color:#F1EAFF;border-color:rgba(38,198,245,.55);background:rgba(38,198,245,.12)}
+.ttab.active{background:rgba(38,198,245,.2);color:#F1EAFF}
+
+/* the heat cards read like the reference's satellite row, in the brand blue */
+.heat-bar i{background:linear-gradient(90deg,#26C6F5,#0E9BD8)}
+.heat-temp .deg{color:var(--acc)}
+.wcard-head .more{color:var(--acc)}
+
+/* scattered mint chrome that predates every layer */
+.qtag:hover{color:var(--acc);border-color:rgba(38,198,245,.5)}
+.guide:hover{border-color:rgba(38,198,245,.45)}
+.soc-card:hover{border-color:rgba(38,198,245,.45)}
+.soc-card:hover .soc-ic,.soc-card:hover .soc-go{color:var(--acc)}
+.copy-btn{color:var(--acc);border-color:rgba(38,198,245,.45)}
+.copy-btn:hover{background:rgba(38,198,245,.14)}
+.dot-live{background:var(--mint)}
+
+/* ============================================================
+   PREMIUM FINISH — depth, glass and light on the blue identity
+   ("coba anda buat lebih premium lagi", said over the LIVE site)
+
+   No layout moves and no new colors — the same arrangement and the same
+   brand blue, finished: the tables get a contained glass surface
+   instead of rows floating on bare ground, the cards get a lit top
+   edge, the active pills get their glow, and the ground gets the depth
+   the reference's space artwork provides without shipping artwork.
+   ============================================================ */
+
+/* the ground: a touch more aurora, plus a faint dot grid for depth —
+   static, so reduced-motion owes it nothing */
+body{
+  background:
+    radial-gradient(rgba(160,220,255,.045) 1px, transparent 1.2px) 0 0/28px 28px,
+    radial-gradient(1200px 560px at 50% -30%, rgba(40,170,240,.16), transparent 62%),
+    radial-gradient(900px 460px at 94% -12%, rgba(20,120,200,.1), transparent 60%),
+    radial-gradient(800px 420px at 4% 8%, rgba(38,198,245,.05), transparent 55%),
+    linear-gradient(180deg,#070B12 0%,#060A0F 45%,#05080B 100%);
+}
+
+/* the boards come back INTO a surface — rows floating on the bare page
+   read unfinished next to the reference's contained table.
+   ⚠️ overflow-x:auto must be RESTATED here: this layer is last in the
+   cascade, so a bare overflow:hidden silently overrode the base rule and
+   the phone block, and a finger could no longer pan the table AT ALL —
+   while board.scrollLeft still worked programmatically, which is exactly
+   how the first verification read green over a table dead to touch
+   ("harus bisa di geser ke kanan apakah anda ngerti?"). The e2e smoke now
+   asserts the COMPUTED overflow-x, not the source text. */
+.board,.tc-board{
+  background:linear-gradient(180deg,rgba(130,185,255,.04),transparent 24%),rgba(11,15,21,.72);
+  border:1px solid rgba(190,215,255,.09);border-radius:16px;overflow:hidden;overflow-x:auto;
+  box-shadow:0 24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.row.head,.tc-row.tc-head{background:rgba(255,255,255,.02);padding-top:12px}
+.board-expand{border-top:1px solid rgba(190,215,255,.07);padding-left:20px;padding-right:20px}
+.board-expand+.board-foot,.board-foot{padding-left:20px;padding-right:20px}
+.board-foot{border-top:1px solid rgba(190,215,255,.07)}
+.board-expand+.board-foot{border-top:none}
+.tc-foot{padding:10px 6px 0}
+/* the hover row takes a light sweep and a keyline, not just a tint */
+.row:not(.head):hover{background:linear-gradient(90deg,rgba(38,198,245,.08),transparent 65%);box-shadow:inset 2px 0 0 var(--acc)}
+.tc-row:not(.tc-head):hover{background:linear-gradient(90deg,rgba(38,198,245,.06),transparent 65%);box-shadow:inset 2px 0 0 var(--acc)}
+
+/* the intel cards: lit top edge, deeper seat, a whisper more radius */
+.wcard,.mv-card{border-radius:16px;
+  background:linear-gradient(180deg,rgba(130,185,255,.05),transparent 30%),#0B0F16;
+  border-color:rgba(190,215,255,.1);
+  box-shadow:0 20px 48px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.06)}
+.wcard-head .ic{background:rgba(38,198,245,.08);border-color:rgba(38,198,245,.22);color:var(--acc)}
+.heat-cell{background:rgba(255,255,255,.025);border-color:rgba(190,215,255,.08)}
+
+/* the controls polish: glassy chips, a lit active pill with its glow */
+.chain-chip,.ttabs,.filter-btn,.btn-wallet,.btn-ghost2{border-color:rgba(190,215,255,.1)}
+.chain-chip.active{
+  background:linear-gradient(180deg,rgba(38,198,245,.24),rgba(38,198,245,.1));
+  border-color:rgba(38,198,245,.55);
+  box-shadow:0 0 20px rgba(38,198,245,.14), inset 0 1px 0 rgba(255,255,255,.14)}
+.ttab.active{background:linear-gradient(180deg,rgba(38,198,245,.26),rgba(38,198,245,.12));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.tab.active,.chip-chain.on{background:linear-gradient(180deg,rgba(38,198,245,.22),rgba(38,198,245,.09));
+  box-shadow:0 0 16px rgba(38,198,245,.12), inset 0 1px 0 rgba(255,255,255,.12)}
+
+/* the primary action gets the jewel treatment the logo already has */
+.btn-primary,.fasttrack{
+  background:linear-gradient(180deg,#7FE9FF 0%,#2BC9F2 48%,#0E9BD8 100%)!important;
+  box-shadow:0 10px 30px rgba(14,155,216,.4), inset 0 1.5px 0 rgba(255,255,255,.65), inset 0 -2px 4px rgba(3,50,70,.35)!important;
+}
+.btn-primary:hover,.fasttrack:hover{
+  box-shadow:0 14px 36px rgba(14,155,216,.55), inset 0 1.5px 0 rgba(255,255,255,.75), inset 0 -2px 4px rgba(3,50,70,.35)!important;
+}
+
+/* the ticker becomes a glass strip that fades at its edges */
+.ticker{background:rgba(9,13,19,.55);
+  -webkit-mask:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent);
+  mask:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
+
+/* score + vote chips slim down — outlines whisper, numbers speak */
+.dscore{font-size:11.5px}
+.ichip,.dscore{border-color:rgba(255,255,255,.1)}
+
+/* the masthead icon chips glow faintly with the accent they carry */
+.sec-ic,.flame{background:rgba(38,198,245,.08);border-color:rgba(38,198,245,.24);color:var(--acc);
+  box-shadow:0 0 14px rgba(38,198,245,.1)}
+.sec-title h2{font-size:23px}
+
+/* panels and the modal share the lit edge */
+.panel,.modal{box-shadow:0 20px 48px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05)}
+
+/* skeletons inherit the surface, so loading keeps the same shape */
+.skr{border-bottom-color:rgba(190,215,255,.05)}
+
+/* The DexScreener embed — shown only where our own chart could not be read
+   (see lib/dsEmbed.ts). It fills the panel the native chart would have used, so
+   the page does not resize between the two. */
+.ck-embed{position:absolute;inset:0;display:flex;flex-direction:column}
+.ck-embed iframe{flex:1;width:100%;border:0;background:var(--panel)}
+/* ⚠️ THEIR WIDGET NEEDS MORE ROOM THAN OURS, AND THE PANEL WAS SIZED FOR OURS.
+   Inside that iframe DexScreener stacks its own toolbar, the TradingView plot,
+   a volume pane, a time axis and a "Tracked by DEXSCREENER" strip. Our native
+   chart draws one compact axis and nothing else, so 360px on a phone is right
+   for it and squeezes theirs into an unreadable band with the last time label
+   clipped mid-digit — which is exactly what was reported.
+
+   `:has()` rather than a prop threaded down to the page: whether the embed is
+   on screen is state inside CandleChart, and a second copy of that decision in
+   the page component is how the two come to disagree. A browser without
+   `:has()` simply keeps today's height, which is the behaviour being replaced —
+   it degrades to the bug, never past it. */
+/* The activity line under an unreadable trade feed — a real reading from the
+   pool's own counts, in the microlabel voice so it reads as a fact about the
+   token rather than a second apology. See components/TokenTrades. */
+.trades-act{margin-top:9px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;font-family:var(--fm);font-size:11.5px;color:var(--muted)}
+.trades-act .ta-b{color:var(--mint);font-weight:700}
+.trades-act .ta-s{color:var(--red);font-weight:700}
+.trades-act .ta-dot{color:var(--faint)}
+.trades-act .ta-w{width:100%;text-align:center;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.ck--embed .ck-head{padding:7px 10px}
+@media (max-width:960px){ .tp-chart-wrap:has(.ck--embed){height:560px} }
+@media (max-width:640px){ .tp-chart-wrap:has(.ck--embed){height:480px} }
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* ── Pons discovery feed ───────────────────────────────────────────────────
+   Auto-indexed launches (Robinhood Chain / Pons v2). Styled off the listing
+   card but deliberately cooler and tagged, so it can never read as a paid
+   listing. */
+.pons-feed{margin-top:26px}
+.pons-feed-head{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.pons-feed-title{font-family:var(--fd);font-weight:700;font-size:15px;display:flex;align-items:center;gap:9px}
+.pons-chip{font-family:var(--fm);font-size:8px;font-weight:800;letter-spacing:.14em;color:#0C1405;background:#CCFF00;border-radius:999px;padding:3px 7px}
+.pons-feed-sub{font-size:11.5px;color:var(--muted)}
+.pons-feed-empty{padding:14px 2px}
+.pons-card{border-style:dashed;box-shadow:none;text-decoration:none;color:inherit}
+.pons-card:hover{background:rgba(204,255,0,.05)}
+.pons-tag{font-family:var(--fm);font-size:8px;font-weight:800;letter-spacing:.12em;color:var(--faint);border:1px solid var(--line2);border-radius:999px;padding:2px 7px}
+.pons-tag.grad{color:#0C1405;background:#CCFF00;border-color:transparent}
+.pons-progress{min-width:108px}
+.pons-bar{height:5px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.pons-bar-fill{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--cyan),#CCFF00)}

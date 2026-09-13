@@ -27,28 +27,142 @@ await page.goto(BASE, { waitUntil: "networkidle" });
 await page.waitForSelector(".board .row:not(.head)", { timeout: 15000 });
 check("home board rows render", (await page.locator(".board .row:not(.head)").count()) >= 10);
 check("ticker items render", (await page.locator(".tick-item").count()) >= 8);
-check("carousel present", await page.locator(".promo").isVisible());
+// the Moontok arrangement: the intel cards LEAD the page — above the board,
+// with the heat, gauge and news cards all present
+check("intel cards lead the page", await page.evaluate(() => {
+  const strip = document.querySelector(".pulse-strip");
+  const board = document.querySelector(".board");
+  return !!strip && !!board && strip.getBoundingClientRect().top < board.getBoundingClientRect().top;
+}));
 check("pulse heat cells", (await page.locator(".heat-cell").count()) === 3);
 check("fear&greed gauge", await page.locator(".fg-num").isVisible());
 check("wire items", (await page.locator(".wire-item").count()) >= 1);
 check("demo pill shown (no egress)", await page.locator(".src-pill.demo").isVisible());
+// The boards must be pannable BY A FINGER, which needs computed overflow-x:auto
+// — a later CSS layer once set a bare overflow:hidden on .board and the table
+// went dead to touch while board.scrollLeft still worked programmatically, so
+// every source-text pin stayed green. Only the computed style tells the truth.
+check("boards keep computed overflow-x:auto", await page.evaluate(() => {
+  const ox = (sel) => getComputedStyle(document.querySelector(sel)).overflowX;
+  return ox(".sec-block .board") === "auto" && ox(".tc-board") === "auto";
+}));
+// Every cell must LIVE inside its own track — at PHONE width, where the fixed
+// track templates apply. The Score cell holds two chips and is flex-end, so a
+// track narrower than its content overflows LEFT: the DXS chip was drawn over
+// the tail of the right-aligned Txns numbers, visible only mid-scroll on a
+// phone ("perbaiki tampilan dx scorenya"). This runs HERE, not in the MOBILE
+// section at the bottom — the script stops at the dead /new-pairs route before
+// reaching it, and a guard in dead code guards nothing.
+{
+  const m = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await m.goto(BASE, { waitUntil: "networkidle" });
+  await m.waitForSelector(".board .row:not(.head)");
+  check("phone: score chips fit their track, clear of the txns column", await m.evaluate(() => {
+    const row = document.querySelector(".sec-block .board .row:not(.head)");
+    const tx = row.querySelector(".c-txns").getBoundingClientRect();
+    const info = row.querySelector(".c-info");
+    const ds = info.querySelector(".dscore").getBoundingClientRect();
+    const chips = [...info.children].reduce((s, c) => s + c.getBoundingClientRect().width, 0);
+    return ds.left >= tx.right && chips <= info.getBoundingClientRect().width + 1;
+  }));
+  await m.close();
+}
 await page.screenshot({ path: SHOT("01-home"), fullPage: false });
 
 // period tab changes column header
-await page.click('.ttabs .ttab:has-text("1h")');
+await page.click('.trend-frames .ttab:has-text("1h")');
 const chgHead = await page.locator(".row.head .sortable").nth(1).innerText();
 check("period tab changes header to 1h %", chgHead.toLowerCase().includes("1h %"), chgHead.replace(/\n/g, " "));
 
-// chain filter
-await page.click('.tabs .tab:has-text("Solana")');
+// chain filter — ONE control for the whole market area (movers + board + Top
+// Coins), and it offers only chains that have listings, so there is no filter
+// that can only ever empty the board.
+await page.click('.chain-row .chain-chip:has-text("Solana")');
+await page.waitForTimeout(300);
 const chainRows = await page.locator(".board .row:not(.head)").count();
 check("solana filter reduces rows", chainRows > 0 && chainRows < 20, `rows=${chainRows}`);
-await page.click('.tabs .tab:has-text("All chains")');
+check("…and the movers with it", (await page.locator(".mv-card").first().locator(".mv-row").count()) <= chainRows);
+check("…and Top Coins with it", (await page.locator(".tc-row:not(.tc-head)").count()) <= chainRows);
+check("every offered chain carries its count", (await page.locator(".chain-chip .chain-n").count()) >= 2);
+// "+N more" must DELIVER the N it promises. It once promised "+18 more" and
+// rendered four — the label counted the hidden list while the render ignored
+// it, and only clicking the button could tell.
+const morePromise = Number(((await page.locator(".chain-more").innerText()).match(/\d+/) ?? [0])[0]);
+const beforeMore = await page.locator(".chain-chip:not(.chain-more)").count();
+await page.click(".chain-more");
+await page.waitForTimeout(250);
+const afterMore = await page.locator(".chain-chip:not(.chain-more)").count();
+check("+N more delivers exactly N", afterMore - beforeMore === morePromise, `${beforeMore} → ${afterMore}, promised +${morePromise}`);
+check("…including the registry's empty chains, dimmed", (await page.locator(".chain-zero").count()) > 0);
+await page.click(".chain-more");
+await page.waitForTimeout(200);
+await page.click('.chain-row .chain-chip:has-text("All chains")');
+await page.waitForTimeout(300);
 
-// sorting: click Price header → sorted desc by price
+// ---------- HOME MARKET AREA ----------
+// Movers · trending board · Top Coins. These are DRIVEN rather than read: the
+// one bug this section exists for — "Show all" passing limit 0 into a slice,
+// which returned the EMPTY array and rendered the "no readable market cap"
+// state over fourteen priced tokens — is invisible to any check that only
+// asserts the markup is present.
+check("three mover cards", (await page.locator(".mv-card").count()) === 3);
+check("the mover list SCROLLS rather than growing the card", await page.evaluate(() => {
+  const l = document.querySelector(".mv-list");
+  return l.scrollHeight > l.clientHeight && getComputedStyle(l).overflowY === "auto";
+}));
+// A Top Loser must be DOWN and a Top Gainer UP — on a one-sided market the
+// card is empty, never filled with the least-green token wearing a plus sign.
+const signs = await page.evaluate(() =>
+  [...document.querySelectorAll(".mv-card")].slice(0, 2).map((c) =>
+    [...c.querySelectorAll(".mv-pct")].map((p) => p.className.includes("up"))));
+check("every Top Gainer row is up", signs[0].every(Boolean), `${signs[0].length} rows`);
+check("every Top Loser row is down", signs[1].every((u) => !u), `${signs[1].length} rows`);
+
+// The board opens on ten and grows in place. The bar must deliver EXACTLY the
+// number it names — a "Show all 40" that stops at 15 is a silent cap wearing a
+// label, which is the one failure this whole footer exists to prevent.
+const openRows = await page.locator(".board .row:not(.head)").count();
+check("the home board opens on ten rows", openRows === 10, `${openRows}`);
+const barLabel = (await page.locator(".board-expand").innerText()).replace(/\s+/g, " ").trim();
+check("the expander names a number", /show all \d+ trending/i.test(barLabel), barLabel);
+await page.click(".board-expand");
+await page.waitForTimeout(350);
+const grown = await page.locator(".board .row:not(.head)").count();
+check("the tap delivers exactly what it promised", grown === Number(barLabel.match(/\d+/)[0]), `${openRows} → ${grown}`);
+check("…and offers the way back", (await page.locator(".board-expand").innerText()).toLowerCase().includes("less"));
+// Anything past the expander's ceiling still needs the full board; with a
+// short seed there is nothing left over, so the line is correctly absent.
+const leftover = await page.locator(".board-foot").count();
+check("no 'showing N of M' line when the expander showed everything", leftover === 0, `${leftover}`);
+await page.click(".board-expand");
+await page.waitForTimeout(300);
+check("collapses back to ten", (await page.locator(".board .row:not(.head)").count()) === 10);
+
+// Top Coins: a third ranking, and it expands in place
+const byCap = await page.locator(".tc-row:not(.tc-head) .tc-sym-txt").first().innerText();
+await page.click('.tc-sorts .ttab:has-text("DXS Score")');
+await page.waitForTimeout(300);
+check("DXS Score ranks differently from Market Cap", (await page.locator(".tc-row:not(.tc-head) .tc-sym-txt").first().innerText()) !== byCap);
+await page.click('.tc-sorts .ttab:has-text("Market Cap")');
+await page.waitForTimeout(250);
+const capped10 = await page.locator(".tc-row:not(.tc-head)").count();
+await page.click(".tc-more");
+await page.waitForTimeout(300);
+const expanded = await page.locator(".tc-row:not(.tc-head)").count();
+check("Show all EXPANDS the table", expanded > capped10, `${capped10} → ${expanded}`);
+check("…and offers the way back", (await page.locator(".tc-more").innerText()).toLowerCase().includes("less"));
+await page.click(".tc-more");
+await page.waitForTimeout(250);
+await page.screenshot({ path: SHOT("01b-home-market"), fullPage: false });
+
+// sorting: click Price header → sorted desc by price.
+// Asserted against the DATA rather than against a remembered ticker: the old
+// form expected a "$1." leader and had been failing since the seed grew a
+// $2.34 token, which is the sort working correctly.
 await page.click('.row.head .sortable:has-text("Price")');
-const firstPrice = await page.locator(".board .row:not(.head)").first().locator(".price").innerText();
-check("sort by price puts $1+ token first", firstPrice.startsWith("$1."), firstPrice);
+const prices = (await page.locator(".board .row:not(.head) .price").allInnerTexts())
+  .map((t) => Number(t.replace(/[$,]/g, "")));
+check("sort by price puts the dearest token first", prices[0] === Math.max(...prices), prices.slice(0, 3).join(" "));
 
 // star does NOT open modal (stopPropagation)
 await page.locator(".board .row:not(.head)").first().locator(".star").click();
@@ -56,15 +170,20 @@ await page.waitForTimeout(400);
 check("star click doesn't open detail modal", (await page.locator(".modal-ov.on").count()) === 0);
 check("toast shows on star", (await page.locator(".toast.on").innerText()).includes("watchlist"));
 
-// row click opens detail modal
+// row click opens the token PAGE. It was a modal once; `openDetail` has been
+// `router.push(tokenHref(t))` for long enough that this check had drifted into
+// waiting 3s for a `.modal-ov` nothing renders any more, taking the whole
+// script down with it before it reached any later view.
 await page.locator(".board .row:not(.head)").first().click();
-await page.waitForSelector(".modal-ov.on", { timeout: 3000 });
-check("row click opens detail modal", await page.locator(".detail-head").isVisible());
-check("detail has CA box", await page.locator(".ca-box code").isVisible());
-const buyHref = await page.locator(".modal-ov.on a.btn-primary").getAttribute("href");
+await page.waitForURL(/\/token\//, { timeout: 8000 });
+await page.waitForSelector(".detail-head, .ca-box", { timeout: 8000 });
+check("row click opens the token page", /\/token\//.test(page.url()), page.url());
+check("token page has the CA box", await page.locator(".ca-box code").first().isVisible());
+const buyHref = await page.locator('a[href^="https://"]').first().getAttribute("href");
 check("buy is a deeplink", !!buyHref && buyHref.startsWith("https://"), buyHref ?? "");
-await page.screenshot({ path: SHOT("02-detail-modal") });
-await page.click(".modal-x");
+await page.screenshot({ path: SHOT("02-token-page") });
+await page.goto(BASE, { waitUntil: "networkidle" });
+await page.waitForSelector(".board .row:not(.head)");
 
 // ---------- WATCHLIST ----------
 await page.click('.nav a[href="/watchlist"]');
@@ -170,6 +289,10 @@ check("mobile: sidebar hidden", !(await mob.locator(".sidebar").isVisible()));
 check("mobile: topbar brand shown", await mob.locator(".brand-top").isVisible());
 const hasHScroll = await mob.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2);
 check("mobile: no horizontal scroll", !hasHScroll);
+check("mobile: the movers are a swipeable rail, not three stacked blocks", await mob.evaluate(() => {
+  const g = document.querySelector(".mv-grid");
+  return g.scrollWidth > g.clientWidth && getComputedStyle(g).overflowX === "auto";
+}));
 await mob.screenshot({ path: SHOT("08-mobile-home"), fullPage: false });
 
 // ---------- REDUCED MOTION ----------

@@ -5,9 +5,30 @@ import type { StoredListing } from "@/lib/store";
 import type { ListingTier } from "@/lib/types";
 import { CHAIN_IDS, CHAINS } from "@/config/chains";
 import { LISTING_TIERS, tierLabel } from "@/lib/packages";
+import { fmtAge, fmtCap, fmtPrice } from "@/lib/format";
 import { Logo } from "@/components/Logo";
+import { BannerManager } from "@/components/admin/BannerManager";
+import { ChannelBannerManager } from "@/components/admin/ChannelBannerManager";
+import { PromoManager } from "@/components/admin/PromoManager";
 
 const short = (a: string) => (a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a);
+
+// Pons launch queue — tokens the launchpad's factory has just minted on
+// Robinhood Chain, read off chain. Nothing here is listed: Dexvra is
+// paid-listing only, so promoting one stays a deliberate press of a button.
+interface PonsQueueItem {
+  address: string;
+  symbol: string | null;
+  name: string | null;
+  ageMinutes: number;
+  graduated: boolean;
+  phase: string;
+  progressPct: number | null;
+  priceUsd: number | null;
+  mcapUsd: number | null;
+  ponsUrl: string;
+  existing: { id: string; status: string } | null;
+}
 
 const emptyAdd = {
   chain: "solana",
@@ -30,11 +51,16 @@ export default function AdminDashboard() {
   const [addErr, setAddErr] = useState("");
   const [adding, setAdding] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [ef, setEf] = useState({ name: "", emoji: "", logoUrl: "", website: "", twitter: "", telegram: "" });
+  const [ef, setEf] = useState({ name: "", emoji: "", logoUrl: "", website: "", twitter: "", telegram: "", overview: "" });
   const [savingEdit, setSavingEdit] = useState(false);
   const [editErr, setEditErr] = useState("");
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState("");
+  const [pons, setPons] = useState<PonsQueueItem[] | null>(null);
+  const [ponsLive, setPonsLive] = useState(true);
+  const [ponsTier, setPonsTier] = useState<ListingTier>("BRONZE");
+  const [ponsErr, setPonsErr] = useState("");
+  const [hrs, setHrs] = useState<Record<string, string>>({}); // per-row trending-hours draft
 
   const load = useCallback(async () => {
     try {
@@ -50,9 +76,43 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const loadPons = useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/pons", { cache: "no-store" });
+      if (!r.ok) return;
+      const j = await r.json();
+      setPons(j.launches ?? []);
+      setPonsLive(j.live !== false);
+    } catch {
+      setPons([]);
+      setPonsLive(false);
+    }
+  }, []);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadPons();
+  }, [load, loadPons]);
+
+  const listLaunch = async (address: string) => {
+    setPonsErr("");
+    setBusy(address);
+    try {
+      const r = await fetch("/api/admin/pons", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ address, tier: ponsTier }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setPonsErr(j.error ?? "Could not create the listing");
+        return;
+      }
+      await Promise.all([load(), loadPons()]);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const patch = async (id: string, body: Record<string, unknown>) => {
     setBusy(id);
@@ -67,6 +127,18 @@ export default function AdminDashboard() {
       setBusy(null);
     }
   };
+
+  // Set a trending slot to run for an arbitrary number of hours (0/empty clears
+  // it). Stamps trendStart=now, trendExp=now+hours so the site + bot sweeper
+  // honour a real window — not just the on/off Featured flag.
+  const setTrendHours = (id: string, raw: string) => {
+    const h = Math.max(0, Math.round(Number(raw) || 0));
+    if (!h) return patch(id, { trendingRank: null, trendStart: null, trendExp: null });
+    const now = Date.now();
+    return patch(id, { trendingRank: 1, trendStart: now, trendExp: now + h * 3_600_000 });
+  };
+  const remHours = (r: StoredListing): number | null =>
+    r.trendExp ? Math.max(0, Math.ceil((r.trendExp - Date.now()) / 3_600_000)) : null;
 
   const setStatus = async (id: string, status: string) => {
     setBusy(id);
@@ -125,6 +197,7 @@ export default function AdminDashboard() {
       website: r.website ?? "",
       twitter: r.twitter ?? "",
       telegram: r.telegram ?? "",
+      overview: r.overview ?? "",
     });
   };
 
@@ -221,6 +294,15 @@ export default function AdminDashboard() {
           <div className="astat"><div className="k">Trending</div><div className="v">{stats.trending}</div></div>
         </div>
 
+        {/* Homepage carousel "Pumped on Dexvra" showcase (editable example) */}
+        <PromoManager />
+
+        {/* Homepage banner (upload + click-through link) */}
+        <BannerManager />
+
+        {/* Channel-post banner templates (artwork + GIF/video, per kind) */}
+        <ChannelBannerManager />
+
         {/* Pending submissions */}
         <section className="asec">
           <div className="asec-h">Pending submissions <span className="cnt">{pending.length}</span></div>
@@ -244,6 +326,70 @@ export default function AdminDashboard() {
                     <div className="pend-actions">
                       <button className="abtn ok" disabled={busy === r.id} onClick={() => setStatus(r.id, "approved")}>Approve</button>
                       <button className="abtn bad" disabled={busy === r.id} onClick={() => setStatus(r.id, "rejected")}>Reject</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Pons launch queue */}
+        <section className="asec">
+          <div className="asec-h">
+            Pons launches · Robinhood <span className="cnt">{pons?.length ?? 0}</span>
+            <select
+              className="a-select asec-search"
+              value={ponsTier}
+              onChange={(e) => setPonsTier(e.target.value as ListingTier)}
+              title="Tier applied when you list a launch"
+            >
+              {LISTING_TIERS.map((t) => (
+                <option key={t.key} value={t.key}>List as {tierLabel(t.key)}</option>
+              ))}
+            </select>
+          </div>
+          <div className="asec-body">
+            {ponsErr && <div className="login-err" style={{ textAlign: "left", marginBottom: 10 }}>{ponsErr}</div>}
+            {pons == null ? (
+              <div className="a-chain">Reading the Pons factory…</div>
+            ) : !ponsLive ? (
+              <div className="a-chain">Robinhood Chain RPC unreachable — try again shortly.</div>
+            ) : pons.length === 0 ? (
+              <div className="a-chain">No launches inside the scanned window yet.</div>
+            ) : (
+              <div className="pend-grid">
+                {pons.map((l) => (
+                  <div className="pend-card" key={l.address}>
+                    <div className="pend-top">
+                      <span style={{ fontSize: 20 }}>🏹</span>
+                      <div>
+                        <div className="pend-sym">{l.symbol ? `$${l.symbol}` : short(l.address)}</div>
+                        <div className="a-chain">
+                          {l.name || "Unnamed"} · {fmtAge(l.ageMinutes)} old ·{" "}
+                          {l.graduated ? l.phase : `curve ${(l.progressPct ?? 0).toFixed(0)}%`}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="pend-meta">{l.address}</div>
+                    <div className="a-chain">
+                      {l.priceUsd != null ? fmtPrice(l.priceUsd) : "no price"} ·{" "}
+                      {l.mcapUsd != null ? fmtCap(l.mcapUsd) : "—"} mcap
+                    </div>
+                    <div className="pend-actions">
+                      {l.existing ? (
+                        <span className="a-chain">Already listed ({l.existing.status})</span>
+                      ) : (
+                        <button
+                          className="abtn ok"
+                          disabled={busy === l.address || !l.symbol}
+                          title={l.symbol ? "" : "Launch has no on-chain ticker"}
+                          onClick={() => listLaunch(l.address)}
+                        >
+                          {busy === l.address ? "Listing…" : "List it"}
+                        </button>
+                      )}
+                      <a className="abtn" href={l.ponsUrl} target="_blank" rel="noopener noreferrer">Pons ↗</a>
                     </div>
                   </div>
                 ))}
@@ -313,10 +459,36 @@ export default function AdminDashboard() {
                           type="checkbox"
                           checked={r.trendingRank != null}
                           disabled={busy === r.id}
-                          onChange={(e) => patch(r.id, { trendingRank: e.target.checked ? (r.trendingRank ?? 1) : null })}
+                          onChange={(e) =>
+                            e.target.checked
+                              ? setTrendHours(r.id, hrs[r.id] || "24")
+                              : patch(r.id, { trendingRank: null, trendStart: null, trendExp: null })
+                          }
                         />
                         Featured
                       </label>
+                      <div className="a-trend-hrs">
+                        <input
+                          type="number"
+                          min={1}
+                          className="a-hrs-in"
+                          placeholder="hrs"
+                          value={hrs[r.id] ?? (remHours(r) != null ? String(remHours(r)) : "")}
+                          disabled={busy === r.id}
+                          onChange={(e) => setHrs((s) => ({ ...s, [r.id]: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") setTrendHours(r.id, (e.target as HTMLInputElement).value);
+                          }}
+                        />
+                        <button
+                          className="abtn"
+                          disabled={busy === r.id}
+                          onClick={() => setTrendHours(r.id, hrs[r.id] ?? "")}
+                        >
+                          Set
+                        </button>
+                        {remHours(r) != null && <span className="a-hrs-left">{remHours(r)}h left</span>}
+                      </div>
                     </td>
                     <td><span className={`a-status ${r.status}`}>{r.status}</span></td>
                     <td>
@@ -364,6 +536,7 @@ export default function AdminDashboard() {
                             <div className="add-fld"><label>Website</label><input className="a-input" value={ef.website} onChange={setE("website")} placeholder="https://…" /></div>
                             <div className="add-fld"><label>X / Twitter</label><input className="a-input" value={ef.twitter} onChange={setE("twitter")} placeholder="https://x.com/…" /></div>
                             <div className="add-fld"><label>Telegram</label><input className="a-input" value={ef.telegram} onChange={setE("telegram")} placeholder="https://t.me/…" /></div>
+                            <div className="add-fld wide"><label>Overview — short project description (token page + channel posts; empty = none)</label><input className="a-input" value={ef.overview} onChange={setE("overview")} placeholder="1-3 sentences about the project" /></div>
                           </div>
                           {editErr && <div className="login-err" style={{ textAlign: "left" }}>{editErr}</div>}
                           <div className="edit-actions">

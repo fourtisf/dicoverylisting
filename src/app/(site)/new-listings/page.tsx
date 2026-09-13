@@ -8,6 +8,7 @@ import { CHAINS } from "@/config/chains";
 import { fmtAge, fmtCap, fmtPrice } from "@/lib/format";
 import { scoreTier } from "@/lib/score";
 import { TierTag } from "@/components/TierTag";
+import { PonsLaunchFeed } from "@/components/PonsLaunchFeed";
 
 export default function NewListingsPage() {
   const { data, openDetail } = useApp();
@@ -38,7 +39,7 @@ export default function NewListingsPage() {
                 <div className="lc-id">
                   <div className="lc-sym">
                     {t.symbol}
-                    <TierTag tier={t.tier} />
+                    <TierTag tier={t.tier} ageMinutes={t.listedMinutesAgo} />
                   </div>
                   <div className="lc-nm">
                     {t.name} · <span style={{ color: CHAINS[t.chain]?.color }}>{CHAINS[t.chain]?.label ?? t.chain}</span>
@@ -68,6 +69,8 @@ export default function NewListingsPage() {
           })}
         </div>
       )}
+
+      <PonsLaunchFeed />
     </section>
   );
 }

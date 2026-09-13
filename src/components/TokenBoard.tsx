@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { capped, changeRank, changeReading, expander, figureReading } from "@/lib/home";
 import type { BoardToken, PeriodKey } from "@/lib/types";
 import { fmtAge, fmtCap, fmtNum, fmtPrice } from "@/lib/format";
 import { scoreTier } from "@/lib/score";
@@ -8,13 +10,46 @@ import { Coin } from "./Coin";
 import { TierTag } from "./TierTag";
 import { useApp } from "./AppState";
 
-const MEDALS = ["🥇", "🥈", "🥉"];
+/** Top-three ranks are DRAWN, not the OS emoji-of-the-day — the same rule the
+ *  Pulse cards state for their section glyphs. An Apple gold medal next to a
+ *  Windows one is two different products; a gradient roundel is ours on every
+ *  device. */
+const Medal = ({ n }: { n: number }) => <span className={`medal medal-${n}`}>{n}</span>;
+
+/** Shimmer placeholder rows. Loading must LOOK like loading: before the first
+ *  /api/tokens answer the empty states below would render as facts ("no tokens
+ *  match") about a market nobody has read yet. */
+export function SkeletonRows({ n = 8 }: { n?: number }) {
+  return (
+    <div aria-busy="true" aria-label="Loading">
+      {Array.from({ length: n }, (_, i) => (
+        <div className="skr" key={i} style={{ opacity: 1 - i * 0.09 }}>
+          <span className="sk sk-dot" />
+          <span className="sk sk-coin" />
+          <span className="sk-id">
+            <span className="sk sk-line" style={{ width: "38%" }} />
+            <span className="sk sk-line thin" style={{ width: "58%" }} />
+          </span>
+          <span className="sk sk-cell" />
+          <span className="sk sk-pill" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type SortKey = "price" | "chg" | "mcap" | "liq" | "vol" | "tx";
 
 const SORT_VAL: Record<SortKey, (t: BoardToken, p: PeriodKey) => number> = {
   price: (t) => t.priceUsd,
-  chg: (t, p) => t.chg[p],
+  // Through `changeRank`, not the raw field and not `changeReading` — an
+  // unreadable/absurd change sinks to the bottom, AND so does a real percentage
+  // with no trading behind it. The board opens on this sort, so whatever wins
+  // it is what the site says is trending; `$MRNA +465%` on $0.05 of 24h volume
+  // held rank 1 over every real market until this read the volume too. The row
+  // still renders its own percentage — see changeRank, which demotes and never
+  // hides.
+  chg: (t, p) => changeRank(t, p),
   mcap: (t) => t.mcap ?? 0,
   liq: (t) => t.liq ?? 0,
   vol: (t, p) => t.vol[p],
@@ -115,12 +150,25 @@ function StdRow({
   override?: { price: number; chgDelta: number };
 }) {
   const { openDetail } = useApp();
-  const price = override?.price ?? t.priceUsd;
-  const chg = t.chg[period] + (override?.chgDelta ?? 0);
+  // EVERY money figure goes through figureReading: a zero on a row no provider
+  // priced is the store's captured default, not a market fact, and this board
+  // rendered seven Robinhood listings as "$0 · $0 · $0" — three claims per row
+  // that nobody measured. The dash the 24h column already draws, on every
+  // column that can lie the same way.
+  const price = override?.price ?? figureReading(t, t.priceUsd);
+  const mcap = figureReading(t, t.mcap);
+  const liq = figureReading(t, t.liq);
+  const vol = figureReading(t, t.vol[period]);
+  const reading = changeReading(t, period);
+  const chg = (reading ?? 0) + (override?.chgDelta ?? 0);
   const up = chg >= 0;
+  // a fallback row whose demo flicker has nudged it counts as a reading —
+  // the flicker only runs in seed mode, where the whole board is the demo
+  const hasReading = reading != null || override?.chgDelta != null;
   const dec = period === "5m" ? 2 : 1;
   const { buys, sells } = t.txns[period];
-  const rank = i < 3 ? <span className="medal">{MEDALS[i]}</span> : i + 1;
+  const tx = figureReading(t, buys + sells);
+  const rank = i < 3 ? <Medal n={i + 1} /> : i + 1;
 
   return (
     <div
@@ -132,29 +180,42 @@ function StdRow({
         <Coin token={t} />
         <div className="ts">
           <div className="sym">
-            {t.symbol}
-            <TierTag tier={t.tier} showRank={false} />
+            <span className="sym-txt">{t.symbol}</span>
+            <TierTag tier={t.tier} showRank={false} ageMinutes={t.listedMinutesAgo} />
           </div>
           <div className="nm">{t.name}</div>
+          {/* phones: the hidden table columns condense into this line */}
+          <div className="m-stats">
+            <b>MC</b> {fmtCap(mcap)} · <b>V</b> {fmtCap(vol)} · <b>TX</b> {fmtNum(tx)} ·{" "}
+            <span style={{ color: scoreTier(t.score).color }}>DXS {t.score}</span>
+          </div>
         </div>
       </div>
       <div className="c-num price">{fmtPrice(price)}</div>
       <div className="c-num">
-        <span className={`chg ${up ? "up" : "dn"}`}>
-          {up ? "+" : ""}
-          {chg.toFixed(dec)}%
-        </span>
+        {hasReading ? (
+          <span className={`chg ${up ? "up" : "dn"}`}>
+            {up ? "+" : ""}
+            {chg.toFixed(dec)}%
+          </span>
+        ) : (
+          <span className="chg none" title="No market reading yet — too new for the indexers">
+            —
+          </span>
+        )}
       </div>
-      <div className="c-num c-mcap mono-dim">{fmtCap(t.mcap)}</div>
-      <div className="c-num c-liq mono-dim">{fmtCap(t.liq)}</div>
-      <div className="c-num c-vol mono-dim">{fmtCap(t.vol[period])}</div>
+      <div className="c-num c-mcap mono-dim">{fmtCap(mcap)}</div>
+      <div className="c-num c-liq mono-dim">{fmtCap(liq)}</div>
+      <div className="c-num c-vol mono-dim">{fmtCap(vol)}</div>
       <div className="c-txns tx-cell">
-        <div className="tx-main">{fmtNum(buys + sells)}</div>
-        <div className="tx-split">
-          <span className="b">{fmtNum(buys)}</span>
-          <span className="sl"> / </span>
-          <span className="s">{fmtNum(Math.max(sells, 0))}</span>
-        </div>
+        <div className="tx-main">{fmtNum(tx)}</div>
+        {tx != null && (
+          <div className="tx-split">
+            <span className="b">{fmtNum(buys)}</span>
+            <span className="sl"> / </span>
+            <span className="s">{fmtNum(Math.max(sells, 0))}</span>
+          </div>
+        )}
       </div>
       <div className="c-info info-cell">
         <span className="dscore" style={{ color: scoreTier(t.score).color }} title="Dexvra Score">
@@ -172,7 +233,11 @@ function StdRow({
 
 function NpRow({ t, i, flashDir }: { t: BoardToken; i: number; flashDir?: "up" | "dn" }) {
   const { openDetail } = useApp();
-  const up = t.chg["24h"] >= 0;
+  const reading = changeReading(t, "24h");
+  const up = (reading ?? 0) >= 0;
+  // The same figureReading rule as the main row — a fresh pair is exactly the
+  // row most likely to carry captured zeros nobody measured.
+  const npTx = figureReading(t, t.txns["24h"].buys + t.txns["24h"].sells);
   return (
     <div
       className={`row ${flashDir === "up" ? "flash-up" : ""} ${flashDir === "dn" ? "flash-dn" : ""}`}
@@ -189,21 +254,29 @@ function NpRow({ t, i, flashDir }: { t: BoardToken; i: number; flashDir?: "up" |
       <div>
         <span className="age-chip">⏱ {fmtAge(t.ageMinutes)}</span>
       </div>
-      <div className="c-num price c-mcap">{fmtPrice(t.priceUsd)}</div>
+      <div className="c-num price c-mcap">{fmtPrice(figureReading(t, t.priceUsd))}</div>
       <div className="c-num">
-        <span className={`chg ${up ? "up" : "dn"}`}>
-          {up ? "+" : ""}
-          {t.chg["24h"].toFixed(1)}%
-        </span>
+        {reading != null ? (
+          <span className={`chg ${up ? "up" : "dn"}`}>
+            {up ? "+" : ""}
+            {reading.toFixed(1)}%
+          </span>
+        ) : (
+          <span className="chg none" title="No 24h reading — the pool is too new or too thin to measure">
+            —
+          </span>
+        )}
       </div>
-      <div className="c-num c-liq mono-dim">{fmtCap(t.liq)}</div>
+      <div className="c-num c-liq mono-dim">{fmtCap(figureReading(t, t.liq))}</div>
       <div className="c-txns tx-cell">
-        <div className="tx-main">{fmtNum(t.txns["24h"].buys + t.txns["24h"].sells)}</div>
-        <div className="tx-split">
-          <span className="b">{fmtNum(t.txns["24h"].buys)}</span>
-          <span className="sl"> / </span>
-          <span className="s">{fmtNum(t.txns["24h"].sells)}</span>
-        </div>
+        <div className="tx-main">{fmtNum(npTx)}</div>
+        {npTx != null && (
+          <div className="tx-split">
+            <span className="b">{fmtNum(t.txns["24h"].buys)}</span>
+            <span className="sl"> / </span>
+            <span className="s">{fmtNum(t.txns["24h"].sells)}</span>
+          </div>
+        )}
       </div>
       <StarButton token={t} />
     </div>
@@ -259,25 +332,68 @@ export function StdBoard({
   sortable = false,
   emptyText = "No tokens match — try another chain or clear your search.",
   loading = false,
+  limit = 0,
+  expandTo = 0,
+  expandNoun = "rows",
+  viewAllHref,
 }: {
   tokens: BoardToken[];
   period?: PeriodKey;
   sortable?: boolean;
   emptyText?: string;
   loading?: boolean;
+  /** Rows to show. 0 = every row — the full board pages stay full; the home
+   *  board caps so the sections under it stay reachable. Never a SILENT cap:
+   *  a capped board renders the footer below with the total and a way through. */
+  limit?: number;
+  /** How far the expander grows the board IN PLACE. 0 = no expander, which is
+   *  what every full board page wants. */
+  expandTo?: number;
+  /** What the button calls the rows — "Show all 15 trending". */
+  expandNoun?: string;
+  viewAllHref?: string;
 }) {
   const { reducedMotion } = useApp();
   const [sortKey, setSortKey] = useState<SortKey>("chg");
   const [sortDir, setSortDir] = useState<1 | -1>(-1);
+  const [open, setOpen] = useState(false);
 
   const sorted = useMemo(() => {
     if (!sortable) return tokens;
-    return [...tokens].sort(
-      (a, b) => (SORT_VAL[sortKey](b, period) - SORT_VAL[sortKey](a, period)) * -sortDir,
-    );
+    return [...tokens].sort((a, b) => {
+      const va = SORT_VAL[sortKey](a, period);
+      const vb = SORT_VAL[sortKey](b, period);
+      // ⚠️ AN UNRANKABLE ROW SINKS IN BOTH DIRECTIONS.
+      //
+      // `-Infinity` is how this sort says "there is no number here" — an
+      // unreadable change, or a real percentage with no trading behind it. It
+      // is LESS THAN EVERYTHING, so on the descending board it sinks correctly
+      // and on the ASCENDING one it rises to the top: one tap on the 24H %
+      // header and the board is led by exactly the rows the reading rule and
+      // the volume floor exist to keep off the top of it. `movers` already had
+      // to learn this — -Infinity fed to a "Top Losers" filter CROWNS a quiet
+      // token — and the header tap is the same bug on the full board.
+      //
+      // So an unrankable row goes last whatever the direction, and the real
+      // values sort among themselves. It is not hidden: the row still renders
+      // its own percentage, in its own column.
+      const ua = !Number.isFinite(va);
+      const ub = !Number.isFinite(vb);
+      if (ua || ub) return ua && ub ? 0 : ua ? 1 : -1;
+      return (vb - va) * -sortDir;
+    });
   }, [tokens, sortable, sortKey, sortDir, period]);
 
-  const { flash, override } = useFlicker(sorted, reducedMotion);
+  const exp = useMemo(() => expander(sorted.length, limit || sorted.length, expandTo), [sorted.length, limit, expandTo]);
+  const shown = useMemo(
+    () => capped(sorted, open ? exp.expanded : limit),
+    [sorted, limit, open, exp.expanded],
+  );
+
+  // The flicker is fed the VISIBLE rows. Given it to the full list, its random
+  // pick lands off-screen most of the time on a capped board and a live board
+  // reads as a frozen one.
+  const { flash, override } = useFlicker(shown.rows, reducedMotion);
 
   const onSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => (d === 1 ? -1 : 1));
@@ -297,14 +413,11 @@ export function StdBoard({
         onSort={onSort}
       />
       {loading ? (
-        <div className="board-loading">
-          <span className="dot-live" />
-          Loading live board…
-        </div>
-      ) : sorted.length === 0 ? (
+        <SkeletonRows n={8} />
+      ) : shown.rows.length === 0 ? (
         <div className="empty">{emptyText}</div>
       ) : (
-        sorted.map((t, i) => (
+        shown.rows.map((t, i) => (
           <StdRow
             key={t.key}
             t={t}
@@ -314,6 +427,35 @@ export function StdBoard({
             override={override[t.key]}
           />
         ))
+      )}
+      {/* The expander is a full-width bar, not a link in a corner: it is the
+          board's own last row, which is where the eye already is after ten of
+          them. It NAMES the number it will show — a button promising "all 40"
+          that stops at 15 is the silent cap with a label on it. */}
+      {exp.canExpand && (
+        <button className={`board-expand ${open ? "open" : ""}`} onClick={() => setOpen((v) => !v)}>
+          {open ? "Show less" : `Show ${exp.showsAll ? "all " : ""}${exp.reveal} ${expandNoun}`}
+          <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+      )}
+      {/* Rows the expander cannot reach — the full board is the only place they
+          exist, so the count and the way through stay, open or collapsed. */}
+      {(exp.canExpand ? exp.beyond > 0 : shown.hidden > 0) && (
+        <div className="board-foot">
+          <span>
+            Showing {shown.rows.length} of {shown.total}
+          </span>
+          {viewAllHref && (
+            <Link className="board-all" href={viewAllHref}>
+              View all {shown.total}
+              <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M5 12h13M13 6l6 6-6 6" />
+              </svg>
+            </Link>
+          )}
+        </div>
       )}
     </div>
   );
@@ -335,10 +477,7 @@ export function NpBoard({ tokens, loading = false }: { tokens: BoardToken[]; loa
         <div></div>
       </div>
       {loading ? (
-        <div className="board-loading">
-          <span className="dot-live" />
-          Loading new pairs…
-        </div>
+        <SkeletonRows n={6} />
       ) : tokens.length === 0 ? (
         <div className="empty">No fresh pairs right now — check back in a minute.</div>
       ) : (

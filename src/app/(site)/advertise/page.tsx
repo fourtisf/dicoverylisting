@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
-import { useApp } from "@/components/AppState";
 import { PageHead } from "@/components/PageHead";
 import { ChainLogo } from "@/components/ChainLogo";
+import { BOT_URL, TELEGRAM_HANDLE, TELEGRAM_LISTING_HANDLE } from "@/config/brand";
 import { CHAINS, CHAIN_IDS } from "@/config/chains";
 import {
   BANNERS,
@@ -12,11 +12,11 @@ import {
   fmtUsd,
   nativeOf,
   tierPrice,
+  tierTrendingHours,
   trendingForChain,
 } from "@/lib/packages";
 
 export default function AdvertisePage() {
-  const { toast, openListing } = useApp();
   const [chain, setChain] = useState("solana");
   const native = nativeOf(chain);
   const trending = trendingForChain(chain);
@@ -49,19 +49,26 @@ export default function AdvertisePage() {
       {/* ── Listing packages ─────────────────────────────────────────── */}
       <h3 className="pkg-h">Listing Packages</h3>
       <p className="pkg-sub">
-        A one-time listing on Dexvra. Higher tiers get better placement, the verified badge, and an
-        announcement post. Your token carries its tier tag everywhere.
+        A one-time listing on Dexvra. Every package — Xpress included — is posted to{" "}
+        <b>{TELEGRAM_LISTING_HANDLE}</b> and to X. Higher tiers add the <b>{TELEGRAM_HANDLE}</b>{" "}
+        announcement, a trending run, and the verified badge. Your token carries its tier tag everywhere.
       </p>
       <div className="pkg-grid">
         {LISTING_TIERS.map((tier) => {
           const price = tierPrice(tier.key, chain);
-          const perks = tier.instant
-            ? ["Instant activation", "Listed on TG + trending board", "Priority verification"]
-            : [
-                tier.rank <= 3 ? "Announcement post" : "Standard board listing",
-                tier.rank <= 3 ? "Verified badge" : "Search + discovery indexed",
-                `Tier #${tier.rank} placement`,
-              ];
+          // Every listing is tweeted (fulfilment calls x.postListing for all of
+          // them), the @dexvraio post is gated on the tier's announce flag, and
+          // the trending hours come from the table the bot bills against. The
+          // page used to name none of the three, so the strongest thing a tier
+          // buys — Diamond carries two full days of trending — was invisible.
+          const hrs = tierTrendingHours(tier.key);
+          const perks = [
+            tier.verified ? "Verified badge" : "Search + discovery indexed",
+            tier.announce ? `Announcement post in ${TELEGRAM_HANDLE}` : `Listing post in ${TELEGRAM_LISTING_HANDLE}`,
+            hrs > 0 ? `Auto trending for ${hrs}h` : "Instant activation — no review wait",
+            "Announcement on X",
+            tier.instant ? "Priority verification — reviewed first" : `Tier #${tier.rank} placement`,
+          ];
           return (
             <div
               className={`pkg ${tier.rank === 1 ? "featured" : ""}`}
@@ -83,9 +90,9 @@ export default function AdvertisePage() {
                   <li key={p}>{p}</li>
                 ))}
               </ul>
-              <button className="btn-primary pkg-cta" onClick={openListing}>
+              <a className="btn-primary pkg-cta" href={BOT_URL} target="_blank" rel="noopener noreferrer">
                 List with {tier.label}
-              </button>
+              </a>
             </div>
           );
         })}
@@ -116,12 +123,9 @@ export default function AdvertisePage() {
                 <td className="pt-price">{fmtNative(r.price, native)}</td>
                 <td>{r.discount > 0 ? <span className="pt-off">−{r.discount}%</span> : <span className="pt-dim">—</span>}</td>
                 <td className="pt-cta">
-                  <button
-                    className="btn-ghost2 sm"
-                    onClick={() => toast(`Trending ${r.duration} · ${fmtNative(r.price, native)} — we'll reach out on TG 📩`)}
-                  >
+                  <a className="btn-ghost2 sm" href={BOT_URL} target="_blank" rel="noopener noreferrer">
                     Book
-                  </button>
+                  </a>
                 </td>
               </tr>
             ))}
@@ -132,11 +136,31 @@ export default function AdvertisePage() {
       {/* ── Banner ads ───────────────────────────────────────────────── */}
       <h3 className="pkg-h">Banner Ads</h3>
       <p className="pkg-sub">Rotating homepage banner slots, billed in USD by run length.</p>
+      <p className="pkg-sub">
+        Both sizes run in the same homepage row, directly under the market pulse. A{" "}
+        <b>Wide</b> banner takes half the row and sits on the left; <b>Standard</b> banners sit to its right, two of them filling the rest.
+      </p>
       <div className="banner-grid">
         {BANNERS.map((b) => (
           <div className="pkg banner-card" key={b.name}>
             <div className="pkg-name">{b.name}</div>
             <div className="banner-size">{b.size}px</div>
+            {/* A real example at this exact size — "which one am I buying?" was
+                impossible to answer from a price table alone. The wrapper keeps
+                the two cards' examples at their true RELATIVE widths, so Wide
+                visibly reads wider than Standard instead of both filling their
+                card identically. */}
+            <div className="banner-example" aria-hidden>
+              <img
+                src={b.name.toLowerCase().includes("wide") ? "/ads/example-wide.png" : "/ads/example-standard.png"}
+                alt=""
+                // 600 vs 1200 — the example is shown at its true share of the row
+                style={{ width: b.name.toLowerCase().includes("wide") ? "100%" : "50%" }}
+              />
+              <span className="banner-example-cap">
+                {b.name.toLowerCase().includes("wide") ? "Half the row, on the left" : "A quarter of the row, on the right"}
+              </span>
+            </div>
             <table className="ptable flush">
               <tbody>
                 {b.rows.map((r) => (
@@ -148,12 +172,9 @@ export default function AdvertisePage() {
                 ))}
               </tbody>
             </table>
-            <button
-              className="btn-ghost2 pkg-cta"
-              onClick={() => toast(`"${b.name}" requested — we'll reach out on TG 📩`)}
-            >
+            <a className="btn-ghost2 pkg-cta" href={BOT_URL} target="_blank" rel="noopener noreferrer">
               Book banner
-            </button>
+            </a>
           </div>
         ))}
       </div>

@@ -24,6 +24,7 @@ export function ListingModal() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(emptyForm);
   const [tierKey, setTierKey] = useState("DIAMOND");
+  const [submitting, setSubmitting] = useState(false);
 
   const native = nativeOf(form.chain);
   const tier = useMemo(() => LISTING_TIERS.find((t) => t.key === tierKey) ?? LISTING_TIERS[0], [tierKey]);
@@ -57,10 +58,55 @@ export function ListingModal() {
     setStep(2);
   };
 
-  const pay = () => {
-    // Store locally for the submitter's "My listings" view, and push to the
-    // server's pending queue so it shows up in the admin panel for review.
-    // (Real on-chain payment + tx-signature verification is a later phase.)
+  /**
+   * Push the submission to the server's pending queue, then tell the submitter.
+   *
+   * ⚠️ IN THAT ORDER, AND THAT IS THE WHOLE OF THIS FUNCTION. It used to fire
+   * the request and forget it — `void fetch(…).catch(() => {})` — write the
+   * local "My listings" record, and go straight to "Submission received!".
+   * So every way the server can say no showed the project a green tick and a
+   * queue entry that did not exist: a malformed address (400), a rate limit
+   * (429), a dead network, and now the one that matters most — a token that is
+   * ALREADY listed (409), which is refused so that a submission can never take
+   * over somebody else's live row.
+   *
+   * A success screen over a refusal is the reassuring reading this repo keeps
+   * paying for, and here it is aimed at a paying customer.
+   */
+  const pay = async () => {
+    if (submitting) return; // a second tap is a second queue entry
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/submit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          chain: form.chain,
+          address: form.ca.trim(),
+          sym: form.sym.trim(),
+          name: form.name.trim(),
+          emoji: form.emoji.trim(),
+          tier: tier.key,
+          twitter: form.x.trim() || undefined,
+          telegram: form.tg.trim() || undefined,
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // The server's own sentence: "already listed" and "already in the
+        // queue" are different things to the person typing, and neither is a
+        // fault on their side.
+        toast(j.error || "Couldn't submit that listing — try again in a moment.");
+        return;
+      }
+    } catch {
+      toast("Couldn't reach the server — nothing was submitted.");
+      return;
+    } finally {
+      setSubmitting(false);
+    }
+    // Only now: a local record of a listing the server refused is a "My
+    // listings" row that will never become anything.
     addListing({
       symbol: "$" + form.sym.trim().toUpperCase().replace(/^\$+/, ""),
       name: form.name.trim(),
@@ -69,20 +115,6 @@ export function ListingModal() {
       tier: tier.key,
       status: "IN REVIEW",
     });
-    void fetch("/api/submit", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        chain: form.chain,
-        address: form.ca.trim(),
-        sym: form.sym.trim(),
-        name: form.name.trim(),
-        emoji: form.emoji.trim(),
-        tier: tier.key,
-        twitter: form.x.trim() || undefined,
-        telegram: form.tg.trim() || undefined,
-      }),
-    }).catch(() => {});
     setStep(4);
   };
 
@@ -200,7 +232,9 @@ export function ListingModal() {
             </div>
             <div className="m-actions">
               <button className="btn-ghost2" onClick={() => setStep(2)}>← Back</button>
-              <button className="btn-primary" onClick={pay}>Pay &amp; submit ⚡</button>
+              <button className="btn-primary" onClick={pay} disabled={submitting}>
+                {submitting ? "Submitting…" : "Pay & submit ⚡"}
+              </button>
             </div>
           </div>
         )}

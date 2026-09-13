@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { UPLOADS_DIR } from "@/lib/uploadsDir";
 
 export const runtime = "nodejs";
 
-const DIR = path.join(process.cwd(), "data", "uploads");
+// One owner for this path — see lib/uploadsDir.ts.
+const DIR = UPLOADS_DIR;
 // Only our own generated names (24 hex + known image ext) — blocks traversal.
 const NAME_RE = /^[a-f0-9]{24}\.(png|jpg|gif|webp)$/;
 const MIME: Record<string, string> = {

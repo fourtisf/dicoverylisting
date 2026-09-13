@@ -12,7 +12,11 @@ import { scryptSync, randomBytes } from "node:crypto";
 const [, , username = "admin", password] = process.argv;
 
 if (!password) {
-  console.error("Usage: node scripts/gen-admin-secrets.mjs <username> <password>");
+  // ⚠️ Described, never offered as a command — and here it matters twice
+  // over: a pasteable line carrying a password would put that password in the
+  // shell history of whoever ran it.
+  console.error("This takes two arguments: the admin username, then the password");
+  console.error("to hash. Both are yours to choose; nothing here can supply them.");
   process.exit(1);
 }
 

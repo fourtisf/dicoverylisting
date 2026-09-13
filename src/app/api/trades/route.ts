@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CHAINS } from "@/config/chains";
 import { cached } from "@/lib/cache";
+import { gtGet } from "@/lib/providers/gt";
+import { readWhy, safeAddress, topPoolAddress } from "@/lib/providers/gtPool";
+import { cachedPool } from "@/lib/providers/poolCache";
+import { publicNote } from "@/lib/publicNote";
+import { TRADES_TTL_MS } from "@/lib/trades";
 import type { Trade } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-// Short TTL so the client's ~12s poll gets genuinely fresh trades, while the
-// cache still coalesces concurrent viewers of the same pool into one upstream hit.
-const TRADES_TTL = 8_000;
+// The TTL and the panel's poll interval live together in lib/trades — a route
+// file may not export anything but its handlers, and these two numbers
+// disagreeing is what made every poll a guaranteed upstream miss.
 
 interface GtTrade {
   attributes: {
@@ -23,15 +28,21 @@ interface GtTrade {
 }
 
 async function fetchOnce(network: string, pool: string): Promise<Trade[]> {
-  const res = await fetch(
+  // Through the shared client: this route is polled every ~12s by every open
+  // token page, so it is one of the app's biggest GT consumers and must be
+  // silenced by a 429 anybody else earned.
+  const res = await gtGet<{ data?: GtTrade[] }>(
     // trade_volume_in_usd_greater_than=0 keeps out dust; GeckoTerminal returns
     // the most recent ~300 trades for the pool — we surface the freshest 60.
-    `https://api.geckoterminal.com/api/v2/networks/${network}/pools/${pool}/trades?trade_volume_in_usd_greater_than=0`,
-    { headers: { accept: "application/json;version=20230302" }, signal: AbortSignal.timeout(9000), cache: "no-store" },
+    `/networks/${network}/pools/${pool}/trades`,
+    { trade_volume_in_usd_greater_than: 0 },
   );
-  if (!res.ok) throw new Error(`GeckoTerminal ${res.status}`);
-  const json = (await res.json()) as { data?: GtTrade[] };
-  return (json.data ?? []).slice(0, 60).map((tr) => {
+  // A 404 is an ANSWER about the pool — GeckoTerminal does not index it — and
+  // an answer is cacheable. Throwing here is what made an unindexed pool cost a
+  // request per poll for ever.
+  if (res.status === 404) return [];
+  if (!res.ok) throw new Error(res.reason ?? "GeckoTerminal failed");
+  return (res.body?.data ?? []).slice(0, 60).map((tr) => {
     const a = tr.attributes;
     const buy = a.kind === "buy";
     return {
@@ -45,28 +56,62 @@ async function fetchOnce(network: string, pool: string): Promise<Trade[]> {
   });
 }
 
-// One retry after a short delay — GeckoTerminal occasionally rate-limits a
-// first hit; a single retry recovers it without stalling the panel on demo.
+/**
+ * ⚠️ NO BLANKET RETRY. This used to re-ask on ANY throw — including a 404 for a
+ * pool GeckoTerminal does not index, which never becomes a 200 however many
+ * times you ask. Since `cached()` stores nothing when the loader throws, an
+ * unindexed pool cost TWO upstream requests on every poll, for every viewer,
+ * for as long as the page stayed open. The shared client already refuses to
+ * spend a request while a 429 cooldown holds, which is what the retry was
+ * really for.
+ */
 async function fetchTrades(network: string, pool: string): Promise<Trade[]> {
-  try {
-    return await fetchOnce(network, pool);
-  } catch {
-    await new Promise((r) => setTimeout(r, 600));
-    return fetchOnce(network, pool);
-  }
+  return fetchOnce(network, pool);
 }
+
 
 export async function GET(req: NextRequest) {
   const chain = (req.nextUrl.searchParams.get("chain") ?? "").trim();
-  const pool = (req.nextUrl.searchParams.get("pool") ?? "").trim();
+  const hint = (req.nextUrl.searchParams.get("pool") ?? "").trim();
+  const address = (req.nextUrl.searchParams.get("address") ?? "").trim();
   const network = CHAINS[chain]?.geckoNetwork;
-  if (!network || !pool || pool.length > 90 || /[^A-Za-z0-9:_-]/.test(pool)) {
-    return NextResponse.json({ trades: [] });
+  if (!network) return NextResponse.json({ trades: [], why: "We don't have a trade feed for that chain yet." });
+
+  // ⚠️ A MISSING POOL IS NOT AN ANSWER. The panel used to decide "no indexed
+  // pool for this token yet" from `t.poolAddress` being null — but that field
+  // is null for every token DexScreener priced rather than GeckoTerminal, which
+  // GT often indexes perfectly well. So the route resolves it, through the one
+  // module that owns that question, exactly as /api/ohlcv does.
+  let pool = safeAddress(hint) ? hint : null;
+  if (!pool && safeAddress(address)) {
+    try {
+      pool = await cachedPool(network, address, () => topPoolAddress(network, address));
+    } catch (err) {
+      // The DETAIL stays — it just goes to the operator, not to the visitor.
+      console.warn(`[trades] ${network}/${address}: pool lookup failed — ${readWhy(err)}`);
+      return NextResponse.json({ trades: [], why: publicNote("recent trades", err) });
+    }
   }
+  if (!pool) {
+    return NextResponse.json({ trades: [], why: "No indexed pool for this token yet, so there are no trades to show." });
+  }
+
   try {
-    const trades = await cached(`trades:${network}:${pool}`, TRADES_TTL, () => fetchTrades(network, pool));
-    return NextResponse.json({ trades });
-  } catch {
-    return NextResponse.json({ trades: [] });
+    const trades = await cached(`trades:${network}:${pool}`, TRADES_TTL_MS, () => fetchTrades(network, pool));
+    // An empty list from a pool that DOES exist is an answer: nothing has
+    // traded in the window. It is not the same as "we could not look".
+    return NextResponse.json({ trades, why: trades.length ? null : "No trades in this pool's recent window." });
+  } catch (err) {
+    // ⚠️ THE REASON TRAVELS. The panel used to receive a bare empty list for
+    // every failure and answer it by DRAWING TWELVE INVENTED TRADES — see
+    // components/TokenTrades. Whatever it renders now, it renders knowing
+    // which of the two things happened.
+    //
+    // …but the reason a VISITOR gets is not the one an operator gets. gt.ts's
+    // refusal names two env vars and this process's budget, and it was being
+    // rendered verbatim on a public token page. publicNote is the one owner of
+    // that translation; the full text goes to the log.
+    console.warn(`[trades] ${network}/${pool}: ${readWhy(err)}`);
+    return NextResponse.json({ trades: [], why: publicNote("recent trades", err) });
   }
 }

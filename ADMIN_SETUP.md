@@ -68,11 +68,95 @@ Open `https://dexvra.fun/<ADMIN_PATH>` → log in.
   land here; Approve puts them live, Reject hides them.
 - **All listings** — change a token's tier (Diamond…Bronze/Xpress), toggle its
   Trending feature, unlist, or delete.
+- **Pons launches · Robinhood** — tokens the Pons v2 factory has just launched,
+  read straight off chain. Nothing here is listed yet; pick a tier and press
+  **List it** to promote one, and the row is filled in from on-chain data
+  (ticker, name, logo, price, market cap, creator tax). Dexvra stays
+  paid-listing only — this only removes the copy-paste.
 - **Add listing** — add a token directly (goes live immediately). Live market
   data (price, chart, trades) is fetched by contract address automatically.
 
 Listings persist in `data/listings.json` (gitignored, survives restarts and
 `git pull`). Public changes propagate within ~30s (the market cache TTL).
+
+## Announcing Pons launches (optional, off by default)
+
+**`bot/` already discovers and posts launches.** This section is only for a
+deployment that wants the *web app* to post them instead — if the bot suite is
+running, you almost certainly want to skip it.
+
+It reads its own credentials, never the bot's, so turning it on cannot make a
+box that runs both post everything twice. Add to `.env.local`:
+
+```
+PONS_ANNOUNCE_BOT_TOKEN=
+PONS_ANNOUNCE_CHAT_ID=
+CRON_SECRET=
+```
+
+Fill them in from three places, in this order:
+
+1. `PONS_ANNOUNCE_BOT_TOKEN` — talk to **@BotFather** on Telegram, `/newbot`,
+   and copy the token it replies with. Use a *different* bot from the one in
+   `TELEGRAM_BOT_TOKEN`, so the two announcers stay separable.
+2. `PONS_ANNOUNCE_CHAT_ID` — the channel's public @name, or the numeric id for
+   a private one. Add the bot to that channel **as an administrator**; Telegram
+   refuses posts from a plain member.
+3. `CRON_SECRET` — generate one and paste the output. Write it **unquoted**:
+   it is hex, it needs no quotes, and the cron line below reads the file with
+   `cut` rather than a shell parser.
+
+```bash
+openssl rand -hex 32
+```
+
+Then restart and add the heartbeat. This line is complete as written — it
+reads the secret out of the env file rather than expecting cron to know it,
+because cron does not load `.env.local`:
+
+```bash
+pm2 restart dexvra --update-env
+crontab -e
+```
+
+```
+*/10 * * * * curl -fsS -H "Authorization: Bearer $(grep -m1 '^CRON_SECRET=' /opt/dexvra/.env.local | cut -d= -f2-)" https://dexvra.io/api/cron/pons >/dev/null
+```
+
+Check it by hand from the box:
+
+```bash
+curl -fsS -H "Authorization: Bearer $(grep -m1 '^CRON_SECRET=' /opt/dexvra/.env.local | cut -d= -f2-)" https://dexvra.io/api/cron/pons
+```
+
+The first run answers `{"ok":true,"posted":0,"initialized":true,...}` and posts
+nothing — it adopts the current head so that switching this on never dumps the
+backlog into the channel. Later runs answer `{"ok":true,"posted":N,...}`. After
+that it posts at most `PONS_BOT_MAX_POSTS` (default 8) per run, oldest first,
+and never repeats one: the markers live in `data/notify.json`.
+
+Leave any of the three variables unset and every post is a silent no-op —
+`/api/cron/pons` answers 503 without `CRON_SECRET` and 401 without a matching
+one, so it is never callable anonymously.
+
+## Deploying
+
+The repo carries its own deploy script. Run it on the server — it derives the
+repo root from its own location, so there is nothing to fill in:
+
+```bash
+bash /opt/dexvra/scripts/deploy.sh
+```
+
+Add `--with-bots` to restart `dexvra-bot`, `dexvra-adminbot` and
+`dexvra-tradebot` as well as the web app.
+
+It refuses to run on a dirty working tree, fast-forwards only, installs from
+the lockfiles with `npm ci`, runs **both** offline test suites *before*
+building — a red test stops the deploy while the old build is still the one
+serving — and then restarts and verifies that the running server reports the
+commit it just built. That last step is the point: a stale process answers
+`200` perfectly well, so `200` is not the check.
 
 ## Notes on security
 
@@ -81,4 +165,6 @@ Listings persist in `data/listings.json` (gitignored, survives restarts and
 - Login is rate-limited (6 tries / 15 min per IP).
 - `/panel` and `/api/admin/*` return 404 on the public domain, and 404 if the
   secret path isn't used on the admin domain.
+- `/api/cron/pons` returns 503 until `CRON_SECRET` is set, and 401 without it —
+  it is never callable anonymously.
 - Never commit `.env.local` or `data/`.

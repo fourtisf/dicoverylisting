@@ -3,17 +3,19 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useApp } from "@/components/AppState";
+import { byChange } from "@/lib/home";
 import { PageHead } from "@/components/PageHead";
 import { StdBoard } from "@/components/TokenBoard";
 
 export default function WatchlistPage() {
   const { data, watchlist } = useApp();
 
+  // Through `byChange`, not the raw field — a starred token with an above-bound
+  // reading (GT has published +5,191,162%) or a real percentage on five cents of
+  // volume would otherwise take rank 1 and the gold medal on the one board a
+  // user built by hand. Same owner as the home board and /trending.
   const list = useMemo(
-    () =>
-      (data?.tokens ?? [])
-        .filter((t) => watchlist.has(t.key))
-        .sort((a, b) => b.chg["24h"] - a.chg["24h"]),
+    () => byChange((data?.tokens ?? []).filter((t) => watchlist.has(t.key)), "24h", -1),
     [data, watchlist],
   );
 
